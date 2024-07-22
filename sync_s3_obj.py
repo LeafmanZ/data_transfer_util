@@ -69,10 +69,10 @@ print(f"Object '{args.src_key}' has been copied to '{args.dst_key}' in {elapsed_
 # BEGIN: SAVE FINISHING COMPLETION INFORMATION TO JSON
 ###
 new_dt_data_dict = {'objects_moved': [{'src_key': args.src_key,
-                                       'dst_key': args.dst_key,
-                                       'epoch_time_start': int(start_time),
-                                       'epoch_time_end': int(end_time),
-                                       'total_time_seconds': elapsed_time}]}
+                                    'dst_key': args.dst_key,
+                                    'epoch_time_start': int(start_time),
+                                    'epoch_time_end': int(end_time),
+                                    'total_time_seconds': elapsed_time}]}
 update_json(args.dt_data_json_dir, new_dt_data_dict)
 ###
 # END: SAVE FINISHING COMPLETION INFORMATION TO JSON

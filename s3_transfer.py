@@ -3,7 +3,6 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor, wait
 import time
 import os
-import json
 
 ###
 # BEGIN: LOAD IN CONFIGURATIONS
@@ -27,7 +26,7 @@ dst_access_key = config['dst']['access_key']
 dst_secret_access_key = config['dst']['secret_access_key']
 dst_endpoint_urls = config['dst']['endpoint_urls']
 
-max_workers = os.cpu_count()//2
+max_workers = os.cpu_count()
 start_time = time.time()
 ###
 # END: LOAD IN CONFIGURATIONS
@@ -51,7 +50,9 @@ dt_data_dict = {
     "completed": False,
     "objects_moved": [],
     "epoch_time_end": False,
-    "total_time_seconds": False
+    "total_time_seconds": False,
+    "num_objects_synced": False,
+    "num_objects_not_synced": False
 }
 
 write_json(dt_data_json_dir, dt_data_dict)
@@ -73,6 +74,16 @@ objects_synced = {key: src_objects[key] for key in src_objects if (key in dst_ob
 # Dictionary of objects that have not been moved or differ from the source to destination
 objects_not_synced = {key: src_objects[key] for key in src_objects if (key not in dst_objects or src_objects[key] != dst_objects[key])}
 
+###
+# BEGIN: UPDATE BUCKET OBJECT INFORMATION
+###
+new_dt_data_dict = {"num_objects_synced": len(objects_synced),
+                    "num_objects_not_synced": len(objects_not_synced)}
+update_json(dt_data_json_dir, new_dt_data_dict)
+###
+# END: UPDATE BUCKET OBJECT INFORMATION
+###
+
 # Distribute endpoint_urls evenly over the amount of objects we need to move
 endpoint_url_distribution = []
 for i in range(len(objects_not_synced)):
@@ -81,18 +92,40 @@ for i in range(len(objects_not_synced)):
     endpoint_url_distribution.append((inbound, outbound))
 
 # Function to run the sync_s3_obj.py script, this is necessary to avoid GIL bottleneck
-def sync_s3_obj(src_bucket, dst_bucket, src_key, dst_key, src_endpoint_url, dst_endpoint_url, dt_data_json_dir):
+def sync_s3_obj(src_bucket, dst_bucket, src_key, dst_key, src_endpoint_url, dst_endpoint_url, dt_data_json_dir, benchmark_progress):
     command = f"python sync_s3_obj.py {src_bucket} {dst_bucket} {src_key} {dst_key} {src_endpoint_url} {dst_endpoint_url} {dt_data_json_dir}"
     subprocess.run(command, shell=True, check=True)
+    if benchmark_progress:
+        # Get the objects in our destination buckets to compare missing objects
+        dst_objects = list_objects(dst_bucket, dst_prefix, dst_s3_client, isSnow=(dst_region=='snow'))
 
-# Check if objects_not_synced contains any objects
+        # Dictionary of objects that have been successfully moved and are identical in both source and destination
+        objects_synced = {key: src_objects[key] for key in src_objects if (key in dst_objects and src_objects[key] == dst_objects[key])}
+        # Dictionary of objects that have not been moved or differ from the source to destination
+        objects_not_synced = {key: src_objects[key] for key in src_objects if (key not in dst_objects or src_objects[key] != dst_objects[key])}
+
+        ###
+        # BEGIN: UPDATE BUCKET OBJECT INFORMATION
+        ###
+        new_dt_data_dict = {"num_objects_synced": len(objects_synced),
+                            "num_objects_not_synced": len(objects_not_synced)}
+        update_json(dt_data_json_dir, new_dt_data_dict)
+        ###
+        # END: UPDATE BUCKET OBJECT INFORMATION
+        ###
+
+# Spawn individual sync_s3_obj processes moving 1 object per process, in parallel up to the amount of max_workers at a time.
 with ThreadPoolExecutor(max_workers=max_workers) as executor:
     futures = []
     for i, obj_key in enumerate(objects_not_synced.keys()):
         src_key = f"{src_prefix.rstrip('/')}/{obj_key}".lstrip('/')
         dst_key = f"{dst_prefix.rstrip('/')}/{obj_key}".lstrip('/')
         src_endpoint_url, dst_endpoint_url = endpoint_url_distribution[i]
-        futures.append(executor.submit(sync_s3_obj, src_bucket, dst_bucket, src_key, dst_key, src_endpoint_url, dst_endpoint_url, dt_data_json_dir))
+        if i % 10 == 9:
+            benchmark_progress = True
+        else:
+            benchmark_progress = False
+        futures.append(executor.submit(sync_s3_obj, src_bucket, dst_bucket, src_key, dst_key, src_endpoint_url, dst_endpoint_url, dt_data_json_dir, benchmark_progress))
 
     # Wait for all futures to complete
     wait(futures)
