@@ -81,7 +81,7 @@ for i in range(len(objects_not_synced)):
     endpoint_url_distribution.append((inbound, outbound))
 
 # Function to run the sync_s3_obj.py script, this is necessary to avoid GIL bottleneck
-def sync_s3_obj(src_bucket, dst_bucket, src_key, dst_key, src_endpoint_url, dst_endpoint_url):
+def sync_s3_obj(src_bucket, dst_bucket, src_key, dst_key, src_endpoint_url, dst_endpoint_url, dt_data_json_dir):
     command = f"python sync_s3_obj.py {src_bucket} {dst_bucket} {src_key} {dst_key} {src_endpoint_url} {dst_endpoint_url} {dt_data_json_dir}"
     subprocess.run(command, shell=True, check=True)
 
