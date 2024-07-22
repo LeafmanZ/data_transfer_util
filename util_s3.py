@@ -62,3 +62,47 @@ def create_s3_client(access_key, secret_access_key, region, endpoint_url):
             s3_client = session.resource('s3', endpoint_url=endpoint_url)
 
     return s3_client
+
+def delete_object_version(bucket_name, s3_client, object_key, version_id):
+    try:
+        # Call delete_object with the Bucket, Key, and VersionId as keyword arguments
+        response = s3_client.delete_object(
+            Bucket=bucket_name,
+            Key=object_key,
+            VersionId=version_id
+        )
+        print(f"Deleted object with VersionId {version_id} from bucket {bucket_name} and key {object_key}")
+    except Exception as e:
+        print(f"Error deleting object: {e}")
+
+def permanently_delete_subdir(bucket, prefix, access_key, secret_access_key, region, endpoint_url):
+    # Initialize S3 client with optional credentials and region
+    s3_client = create_s3_client(access_key, secret_access_key, region, endpoint_url)
+
+    # Begin Delete Process
+    try:
+        files=0
+        while True:
+            # List object versions including delete markers with the specified prefix
+            response = s3_client.list_object_versions(Bucket=bucket, Prefix=prefix)
+
+            # Process delete markers and versions
+            for version in response.get('Versions', []):
+                key = version['Key']
+                version_id = version['VersionId']
+                delete_object_version(bucket, s3_client, key, version_id)
+                files+=1
+
+            for delete_marker in response.get('DeleteMarkers', []):
+                key = delete_marker['Key']
+                version_id = delete_marker['VersionId']
+                delete_object_version(bucket, s3_client, key, version_id)
+                files+=1
+            
+            #Check if there are more results to fetch
+            if not response.get('IsTruncated', False):
+                break  # Exit the loop if no more results are available
+        print(f'Files Deleted: {files}')
+
+    except Exception as e:
+        print(f"Error listing or deleting object versions: {e}")
