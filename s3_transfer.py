@@ -49,7 +49,9 @@ dt_data_dict = {
     "max_workers": max_workers,
     "epoch_time_start": int(start_time),
     "completed": False,
-    "objects_moved": []
+    "objects_moved": [],
+    "epoch_time_end": False,
+    "total_time_seconds": False
 }
 
 write_json(dt_data_json_dir, dt_data_dict)
