@@ -1,5 +1,29 @@
 import yaml
 import boto3
+import json
+from filelock import FileLock
+
+# Function to read JSON file
+def read_json(file_path):
+    with open(file_path, 'r') as json_file:
+        return json.load(json_file)
+
+# Function to write JSON file
+def write_json(file_path, data):
+    with open(file_path, 'w') as json_file:
+        json.dump(data, json_file, indent=4)
+
+# Function to update JSON file with new data without overriding existing keys
+def update_json(file_path, new_data):
+    lock_path = file_path + ".lock"
+    with FileLock(lock_path):
+        data = read_json(file_path)
+        for key, value in new_data.items():
+            if key in data and isinstance(data[key], list):
+                data[key].extend(value)
+            else:
+                data[key] = value
+        write_json(file_path, data)
 
 def read_config(filename="config.yaml"):
     with open(filename, 'r') as stream:
@@ -29,7 +53,6 @@ def list_objects(bucket_name, prefix, s3_client, isSnow=False):
                     if not obj["Key"].endswith('/'):
                         key = obj["Key"].replace(prefix, '', 1).lstrip('/')
                         objects[key] = obj['Size']
-    
     return objects
 
 def create_s3_client(access_key, secret_access_key, region, endpoint_url):
@@ -60,7 +83,6 @@ def create_s3_client(access_key, secret_access_key, region, endpoint_url):
             s3_client = session.resource('s3', endpoint_url=endpoint_url, verify=False)
         else:
             s3_client = session.resource('s3', endpoint_url=endpoint_url)
-
     return s3_client
 
 def delete_object_version(bucket_name, s3_client, object_key, version_id):
