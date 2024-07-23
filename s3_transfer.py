@@ -77,9 +77,9 @@ objects_not_synced = {key: src_objects[key] for key in src_objects if (key not i
 ###
 # BEGIN: UPDATE BUCKET OBJECT INFORMATION
 ###
-new_dt_data_dict = {"num_objects_synced": len(objects_synced),
+update_dt_data_dict = {"num_objects_synced": len(objects_synced),
                     "num_objects_not_synced": len(objects_not_synced)}
-update_json(dt_data_json_dir, new_dt_data_dict)
+update_json(dt_data_json_dir, update_dt_data_dict)
 ###
 # END: UPDATE BUCKET OBJECT INFORMATION
 ###
@@ -107,9 +107,9 @@ def sync_s3_obj(src_bucket, dst_bucket, src_key, dst_key, src_endpoint_url, dst_
         ###
         # BEGIN: UPDATE BUCKET OBJECT INFORMATION
         ###
-        new_dt_data_dict = {"num_objects_synced": len(objects_synced),
+        update_dt_data_dict = {"num_objects_synced": len(objects_synced),
                             "num_objects_not_synced": len(objects_not_synced)}
-        update_json(dt_data_json_dir, new_dt_data_dict)
+        update_json(dt_data_json_dir, update_dt_data_dict)
         ###
         # END: UPDATE BUCKET OBJECT INFORMATION
         ###
@@ -137,7 +137,17 @@ print(f"Total time taken: {total_time:.2f} seconds")
 ###
 # BEGIN: SAVE FINISHING COMPLETION INFORMATION TO JSON
 ###
-new_dt_data_dict = {'epoch_time_end': int(end_time),
+# Get the objects in our destination buckets to compare missing objects
+dst_objects = list_objects(dst_bucket, dst_prefix, dst_s3_client, isSnow=(dst_region=='snow'))
+
+# Dictionary of objects that have been successfully moved and are identical in both source and destination
+objects_synced = {key: src_objects[key] for key in src_objects if (key in dst_objects and src_objects[key] == dst_objects[key])}
+# Dictionary of objects that have not been moved or differ from the source to destination
+objects_not_synced = {key: src_objects[key] for key in src_objects if (key not in dst_objects or src_objects[key] != dst_objects[key])}
+
+new_dt_data_dict = {'num_objects_synced': len(objects_synced),
+                    'num_objects_not_synced': len(objects_not_synced),
+                    'epoch_time_end': int(end_time),
                     'total_time_seconds': total_time,
                     'completed': True}
 update_json(dt_data_json_dir, new_dt_data_dict)
