@@ -35,7 +35,12 @@ start_time = time.time()
 ###
 # BEGIN: SAVE CONFIGURATION INFORMATION TO JSON
 ###
-dt_data_json_dir = f"dt_data_{int(start_time)}.json"
+# Create logs subdir if it doesn't already exist
+log_dir = 'logs'
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+
+dt_data_json_dir = os.path.join(log_dir, f"dt_data_{int(start_time)}.json")
 dt_data_dict = {
     "src_bucket": src_bucket,
     "src_prefix": src_prefix,
