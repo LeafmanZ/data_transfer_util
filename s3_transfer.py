@@ -126,7 +126,7 @@ with ThreadPoolExecutor(max_workers=max_workers) as executor:
         src_key = f"{src_prefix.rstrip('/')}/{obj_key}".lstrip('/')
         dst_key = f"{dst_prefix.rstrip('/')}/{obj_key}".lstrip('/')
         src_endpoint_url, dst_endpoint_url = endpoint_url_distribution[i]
-        if i % 10 == 9:
+        if i % 10 == 0: # Every nth object sync we spawn, update our sync status every update_benchmark_interval 
             benchmark_progress = True
         else:
             benchmark_progress = False
