@@ -25,4 +25,3 @@ log:
   secret_access_key: 'dsfsaf'
   endpoint_urls: ['no_endpoint']
   local_directory: 'logs'
-  
