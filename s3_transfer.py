@@ -26,6 +26,8 @@ dst_access_key = config['dst']['access_key']
 dst_secret_access_key = config['dst']['secret_access_key']
 dst_endpoint_urls = config['dst']['endpoint_urls']
 
+log_local_directory = config['log']['local_directory']
+
 max_workers = os.cpu_count()
 start_time = time.time()
 ###
@@ -35,12 +37,11 @@ start_time = time.time()
 ###
 # BEGIN: SAVE CONFIGURATION INFORMATION TO JSON
 ###
-# Create logs subdir if it doesn't already exist
-log_dir = 'logs'
-if not os.path.exists(log_dir):
-    os.makedirs(log_dir)
+# Create log_local_directory subdir if it doesn't already exist
+if not os.path.exists(log_local_directory):
+    os.makedirs(log_local_directory)
 
-dt_data_json_dir = os.path.join(log_dir, f"dt_data_{int(start_time)}.json")
+dt_data_json_dir = os.path.join(log_local_directory, f"dt_data_{int(start_time)}.json")
 dt_data_dict = {
     "src_bucket": src_bucket,
     "src_prefix": src_prefix,
@@ -59,7 +60,7 @@ dt_data_dict = {
     "num_objects_synced": False,
     "num_objects_not_synced": False,
     "total_bytes_to_move": 0,
-    "objects_failed_to_move": []
+    "objects_failed_to_move": {}
 }
 
 write_json(dt_data_json_dir, dt_data_dict)

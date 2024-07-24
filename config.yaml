@@ -1,7 +1,7 @@
 # set up source information for snowball source
 src:
   bucket: "dksjfl"
-  bucket_prefix: "sdfldsaf" # ex1 "mysubdir/" ex2 "my_data/date_move" ex3 "mysubdir"; does not handle individual objects
+  bucket_prefix: "sdfldsaf" # ex1 "mysubdir" ex2 "my_data/date_move" ex3 "mysubdir"; does not handle individual objects
   region: "snow" # set to 'snow' if it is a snowball
   access_key: 'dsfkljsadf'
   secret_access_key: 'sdfasadf'
@@ -10,9 +10,19 @@ src:
 # set up destination information for cloud
 dst:
   bucket: "dfssaifk"
-  bucket_prefix: "dskfsadld" # ex1 "mysubdir/" ex2 "my_data/date_move" ex3 "mysubdir"; does not handle individual objects
+  bucket_prefix: "dskfsadld" # ex1 "mysubdir" ex2 "my_data/date_move" ex3 "mysubdir"; does not handle individual objects
   region: "us-east-1"
   access_key: 'sdasafdasf'
   secret_access_key: 'dsfsaf'
   endpoint_urls: ['https://10.1.1.1', 'https://10.1.1.2', 'https://10.1.1.3']
   # endpoint_urls: ['no_endpoint']
+
+log:
+  bucket: "dfssaifk"
+  bucket_prefix: "dskfsadld" # ex1 "mysubdir/" ex2 "my_data/date_move" ex3 "mysubdir"; does not handle individual objects
+  region: "us-east-1"
+  access_key: 'sdasafdasf'
+  secret_access_key: 'dsfsaf'
+  endpoint_urls: ['no_endpoint']
+  local_directory: 'logs'
+  
