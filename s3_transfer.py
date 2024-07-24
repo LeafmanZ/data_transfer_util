@@ -57,8 +57,10 @@ dt_data_dict = {
     "objects_moved": [],
     "epoch_time_end": False,
     "total_time_seconds": False,
-    "num_objects_synced": False,
-    "num_objects_not_synced": False,
+    "start_num_objects_synced": False,
+    "start_num_objects_not_synced": False,
+    "final_num_objects_synced": False,
+    "final_num_objects_not_synced": False,
     "total_bytes_to_move": 0,
     "objects_failed_to_move": {}
 }
@@ -85,8 +87,10 @@ objects_not_synced = {key: src_objects[key] for key in src_objects if (key not i
 ###
 # BEGIN: UPDATE BUCKET OBJECT INFORMATION
 ###
-update_dt_data_dict = {"num_objects_synced": len(objects_synced),
-                    "num_objects_not_synced": len(objects_not_synced),
+update_dt_data_dict = {"start_num_objects_synced": len(objects_synced),
+                    "start_num_objects_not_synced": len(objects_not_synced),
+                    "final_num_objects_synced": len(objects_synced),
+                    "final_num_objects_not_synced": len(objects_not_synced),
                     "total_bytes_to_move":sum(objects_not_synced.values())}
 update_json(dt_data_json_dir, update_dt_data_dict)
 ###
@@ -116,8 +120,8 @@ def sync_s3_obj(src_bucket, dst_bucket, src_key, dst_key, bytes, src_endpoint_ur
         ###
         # BEGIN: UPDATE BUCKET OBJECT INFORMATION
         ###
-        update_dt_data_dict = {"num_objects_synced": len(objects_synced),
-                            "num_objects_not_synced": len(objects_not_synced)}
+        update_dt_data_dict = {"final_num_objects_synced": len(objects_synced),
+                            "final_num_objects_not_synced": len(objects_not_synced)}
         update_json(dt_data_json_dir, update_dt_data_dict)
         ###
         # END: UPDATE BUCKET OBJECT INFORMATION
@@ -154,8 +158,8 @@ objects_synced = {key: src_objects[key] for key in src_objects if (key in dst_ob
 # Dictionary of objects that have not been moved or differ from the source to destination
 objects_not_synced = {key: src_objects[key] for key in src_objects if (key not in dst_objects or src_objects[key] != dst_objects[key])}
 
-new_dt_data_dict = {'num_objects_synced': len(objects_synced),
-                    'num_objects_not_synced': len(objects_not_synced),
+new_dt_data_dict = {'final_num_objects_synced': len(objects_synced),
+                    'final_num_objects_not_synced': len(objects_not_synced),
                     'objects_failed_to_move': objects_not_synced,
                     'epoch_time_end': int(end_time),
                     'total_time_seconds': total_time,
