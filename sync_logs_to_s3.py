@@ -20,6 +20,10 @@ log_access_key = config['log']['access_key']
 log_secret_access_key = config['log']['secret_access_key']
 log_endpoint_urls = config['log']['endpoint_urls']
 log_local_directory = config['log']['local_directory']
+
+# Create log_local_directory subdir if it doesn't already exist
+if not os.path.exists(log_local_directory):
+    os.makedirs(log_local_directory)
 ###
 # END: LOAD IN CONFIGURATIONS
 ###
@@ -63,4 +67,4 @@ def sync_logs_to_s3():
 # Continuously sync logs to the S3 bucket
 while True:
     sync_logs_to_s3()
-    time.sleep(60)  # Wait for 60 seconds before the next sync
+    time.sleep(10)  # Wait for 60 seconds before the next sync
