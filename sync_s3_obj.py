@@ -12,6 +12,7 @@ parser.add_argument('dst_bucket', type=str, help='The destination S3 bucket name
 
 parser.add_argument('src_key', type=str, help='The source object key to copy.')
 parser.add_argument('dst_key', type=str, help='The destination object key for the copied object.')
+parser.add_argument('bytes', type=int, help='The total size of the object in bytes')
 
 parser.add_argument('src_endpoint_url', type=str, help='The source endpoint url for the copied object.')
 parser.add_argument('dst_endpoint_url', type=str, help='The destination endpoint url for the copied object.')
@@ -70,6 +71,7 @@ print(f"Object '{args.src_key}' has been copied to '{args.dst_key}' in {elapsed_
 ###
 new_dt_data_dict = {'objects_moved': [{'src_key': args.src_key,
                                     'dst_key': args.dst_key,
+                                    'bytes': args.bytes,
                                     'epoch_time_start': int(start_time),
                                     'epoch_time_end': int(end_time),
                                     'total_time_seconds': elapsed_time}]}
