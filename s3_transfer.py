@@ -52,20 +52,20 @@ dt_data_dict = {
     "dst_region": dst_region,
     "dst_endpoint_urls": dst_endpoint_urls,
     "max_workers": max_workers,
-    "epoch_time_start": int(start_time),
+    "start_time_epoch": int(start_time),
     "status": "Running",
     "objects_moved": [],
-    "epoch_time_end": False,
-    "total_time_seconds": False,
-    "start_num_objects_synced": False,
-    "start_num_objects_not_synced": False,
-    "final_num_objects_synced": False,
-    "final_num_objects_not_synced": False,
-    "percent_completed": False,
+    "end_time_epoch": False,
+    "total_duration_seconds": False,
+    "initial_synced_objects": False,
+    "initial_unsynced_objects": False,
+    "final_synced_objects": False,
+    "final_unsynced_objects": False,
+    "completion_percentage": False,
     "total_bytes_to_move": False,
-    "bytes_moved": False,
-    "bytes_left_to_move": False,
-    "objects_failed_to_move": {}
+    "bytes_transferred": False,
+    "remaining_bytes": False,
+    "failed_objects": {}
 }
 
 write_json(dt_data_json_dir, dt_data_dict)
@@ -92,11 +92,11 @@ try:
     ###
     # BEGIN: UPDATE BUCKET OBJECT INFORMATION
     ###
-    update_dt_data_dict = {"start_num_objects_synced": len(objects_synced),
-                        "start_num_objects_not_synced": len(objects_not_synced),
-                        "final_num_objects_synced": len(objects_synced),
-                        "final_num_objects_not_synced": len(objects_not_synced),
-                        "percent_completed": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
+    update_dt_data_dict = {"initial_synced_objects": len(objects_synced),
+                        "initial_unsynced_objects": len(objects_not_synced),
+                        "final_synced_objects": len(objects_synced),
+                        "final_unsynced_objects": len(objects_not_synced),
+                        "completion_percentage": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
                         "total_bytes_to_move": total_bytes_to_move}
     update_json(dt_data_json_dir, update_dt_data_dict)
     ###
@@ -126,11 +126,11 @@ try:
             ###
             # BEGIN: UPDATE BUCKET OBJECT INFORMATION
             ###
-            update_dt_data_dict = {"final_num_objects_synced": len(objects_synced),
-                                "final_num_objects_not_synced": len(objects_not_synced),
-                                "percent_completed": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
-                                "bytes_moved": min(sum(objects_synced.values()), total_bytes_to_move),
-                                "bytes_left_to_move": sum(objects_not_synced.values()),}
+            update_dt_data_dict = {"final_synced_objects": len(objects_synced),
+                                "final_unsynced_objects": len(objects_not_synced),
+                                "completion_percentage": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
+                                "bytes_transferred": min(sum(objects_synced.values()), total_bytes_to_move),
+                                "remaining_bytes": sum(objects_not_synced.values()),}
             update_json(dt_data_json_dir, update_dt_data_dict)
             ###
             # END: UPDATE BUCKET OBJECT INFORMATION
@@ -167,14 +167,14 @@ try:
     # Dictionary of objects that have not been moved or differ from the source to destination
     objects_not_synced = {key: src_objects[key] for key in src_objects if (key not in dst_objects or src_objects[key] != dst_objects[key])}
 
-    new_dt_data_dict = {'final_num_objects_synced': len(objects_synced),
-                        'final_num_objects_not_synced': len(objects_not_synced),
-                        "percent_completed": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
-                        "bytes_moved": min(sum(objects_synced.values()), total_bytes_to_move),
-                        "bytes_left_to_move": sum(objects_not_synced.values()),
-                        'objects_failed_to_move': objects_not_synced,
-                        'epoch_time_end': int(end_time),
-                        'total_time_seconds': total_time,
+    new_dt_data_dict = {'final_synced_objects': len(objects_synced),
+                        'final_unsynced_objects': len(objects_not_synced),
+                        "completion_percentage": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
+                        "bytes_transferred": min(sum(objects_synced.values()), total_bytes_to_move),
+                        "remaining_bytes": sum(objects_not_synced.values()),
+                        'failed_objects': objects_not_synced,
+                        'end_time_epoch': int(end_time),
+                        'total_duration_seconds': total_time,
                         'status': 'Completed'}
     update_json(dt_data_json_dir, new_dt_data_dict)
 except:
