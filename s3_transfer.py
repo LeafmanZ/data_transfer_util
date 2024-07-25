@@ -61,7 +61,10 @@ dt_data_dict = {
     "start_num_objects_not_synced": False,
     "final_num_objects_synced": False,
     "final_num_objects_not_synced": False,
-    "total_bytes_to_move": 0,
+    "percent_completed": False,
+    "total_bytes_to_move": False,
+    "bytes_moved": False,
+    "bytes_left_to_move": False,
     "objects_failed_to_move": {}
 }
 
@@ -91,7 +94,8 @@ update_dt_data_dict = {"start_num_objects_synced": len(objects_synced),
                     "start_num_objects_not_synced": len(objects_not_synced),
                     "final_num_objects_synced": len(objects_synced),
                     "final_num_objects_not_synced": len(objects_not_synced),
-                    "total_bytes_to_move":sum(objects_not_synced.values())}
+                    "percent_completed": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
+                    "total_bytes_to_move": sum(objects_not_synced.values())}
 update_json(dt_data_json_dir, update_dt_data_dict)
 ###
 # END: UPDATE BUCKET OBJECT INFORMATION
@@ -121,7 +125,10 @@ def sync_s3_obj(src_bucket, dst_bucket, src_key, dst_key, bytes, src_endpoint_ur
         # BEGIN: UPDATE BUCKET OBJECT INFORMATION
         ###
         update_dt_data_dict = {"final_num_objects_synced": len(objects_synced),
-                            "final_num_objects_not_synced": len(objects_not_synced)}
+                            "final_num_objects_not_synced": len(objects_not_synced),
+                            "percent_completed": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
+                            "bytes_moved": sum(objects_synced.values()),
+                            "bytes_left_to_move": sum(objects_not_synced.values()),}
         update_json(dt_data_json_dir, update_dt_data_dict)
         ###
         # END: UPDATE BUCKET OBJECT INFORMATION
@@ -134,7 +141,7 @@ with ThreadPoolExecutor(max_workers=max_workers) as executor:
         src_key = f"{src_prefix.rstrip('/')}/{obj_key}".lstrip('/')
         dst_key = f"{dst_prefix.rstrip('/')}/{obj_key}".lstrip('/')
         src_endpoint_url, dst_endpoint_url = endpoint_url_distribution[i]
-        if i % 10 == 0: # Every nth object sync we spawn, update our sync status every update_benchmark_interval 
+        if i % max_workers == 0: # Every nth object sync we spawn, update our sync status every update_benchmark_interval 
             benchmark_progress = True
         else:
             benchmark_progress = False
@@ -160,6 +167,9 @@ objects_not_synced = {key: src_objects[key] for key in src_objects if (key not i
 
 new_dt_data_dict = {'final_num_objects_synced': len(objects_synced),
                     'final_num_objects_not_synced': len(objects_not_synced),
+                    "percent_completed": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
+                    "bytes_moved": sum(objects_synced.values()),
+                    "bytes_left_to_move": sum(objects_not_synced.values()),
                     'objects_failed_to_move': objects_not_synced,
                     'epoch_time_end': int(end_time),
                     'total_time_seconds': total_time,

@@ -115,4 +115,6 @@ def get_latest_log():
     return jsonify(log)
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    context = ('cert.pem', 'key.pem')  # Replace with the actual paths to your SSL certificate and key
+    app.run(host='0.0.0.0', port=443, ssl_context=context, debug=False)
+

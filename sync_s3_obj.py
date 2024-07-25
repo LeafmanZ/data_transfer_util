@@ -55,7 +55,7 @@ else:
     s3_object = src_s3_client.get_object(Bucket=args.src_bucket, Key=args.src_key)
 # Upload the streamed object to the destination
 if dst_region == 'snow':
-    dst_s3_client.put_object(Bucket=args.dst_bucket, Key=args.dst_key, Body=s3_object['Body'].read())
+    dst_s3_client.meta.client.upload_fileobj(s3_object['Body'], args.dst_bucket, args.dst_key)
 else:
     dst_s3_client.upload_fileobj(s3_object['Body'], args.dst_bucket, args.dst_key)
 
