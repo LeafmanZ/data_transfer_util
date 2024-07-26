@@ -1,3 +1,10 @@
+import sys
+import os
+
+# Add the parent directory to the sys.path
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(parent_dir)
+
 import argparse
 import urllib3
 import time
