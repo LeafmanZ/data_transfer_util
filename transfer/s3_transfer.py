@@ -43,6 +43,7 @@ if not os.path.exists(log_local_directory):
 
 dt_data_json_dir = os.path.join(log_local_directory, f"dt_data_{int(start_time)}.json")
 dt_data_dict = {
+    "service": "AWS",
     "src_bucket": src_bucket,
     "src_prefix": src_prefix,
     "src_region": src_region,
