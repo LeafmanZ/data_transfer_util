@@ -1,14 +1,8 @@
-import sys
-import os
-
-# Add the parent directory to the sys.path
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(parent_dir)
-
 from util_s3 import read_config, list_objects, create_s3_client, write_json, update_json
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, wait
 import time
+import os
 
 ###
 # BEGIN: LOAD IN CONFIGURATIONS
