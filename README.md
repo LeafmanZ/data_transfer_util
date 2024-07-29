@@ -3,7 +3,7 @@ The script performs high-speed data transfers over an intermediary
 
 ---
 
-# README for S3 Data Transfer Scripts
+# S3 Data Transfer Scripts
 
 This document provides a detailed overview of two Python scripts designed for managing data transfers between AWS S3 buckets. The scripts facilitate data synchronization, particularly useful in environments involving AWS Snowball or similar services.
 
