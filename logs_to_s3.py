@@ -66,5 +66,10 @@ def sync_logs_to_s3():
 
 # Continuously sync logs to the S3 bucket
 while True:
-    sync_logs_to_s3()
+    try:
+        sync_logs_to_s3()
+    except Exception as e:
+        error_message = f"An error occurred while syncing logs to S3: {e}. It is possible this is just an MD5 mismatch and a resync is automatically happening."
+        print(error_message)
+
     time.sleep(10)  # Wait for 60 seconds before the next sync
