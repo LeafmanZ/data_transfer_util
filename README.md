@@ -50,11 +50,6 @@ python s3_sync_obj.py {src_bucket} {dst_bucket} {src_key} {dst_key} {bytes} {src
 - **Data Streaming and Uploading**: Optimizes data transfers by streaming objects directly between buckets to minimize local resource utilization.
 - **Performance Logging**: Records the transfer time and updates a JSON log with the completion details for each object moved.
 
----
-
-Here's a README template that you can use for your project. It includes sections for each script (`api_service.py` and `api_test_example.py`), detailing both usage instructions for users and explanations for developers on how the code functions.
-
----
 
 # API Service and Testing
 
@@ -126,4 +121,88 @@ The script uses the `requests` library to send HTTP requests to the API:
 
 Each function prints the status code and JSON response for its respective API call, facilitating easy debugging and verification of API behavior.
 
+---
+---
+# Setting up Snowball Edge
+This will include steps to ensuring proper automated set up of your SBE. All scripts starting with sbe_ and ending with .py will be used for the set up. They are and will be used in this respective order:
+1. sbe_unlock.py
+2. sbe_profile.py
+3. sbe_config.py
+
+**Before you begin:**
+
+1. **Wait for the Snowball Edge (SBE) to procure its own IP address.**
+2. **Prepare the Directory**: Create a directory for the Snowball Edge and include the manifest file ending with (`manifest.bin`) and `sbe_config.yaml` with the following configuration:
+   ```yaml
+   unlock_key: "unlock-key-numbers-go-here"
+   endpoint_url: "https://you.rnu.mbe.rs"
+   ```
+
+## sbe_unlock.py
+
+### Usage
+
+This script automates the process of unlocking a Snowball Edge device, retrieving AWS access keys, and saving them to a YAML file located in the snowball directory as `keys.yaml`. This will be used in the later scripts in this process.
+
+**Run the Script**: Execute the script from the command line with the directory path of the Snowball Edge folder (snowdir) as an argument:
+   ```bash
+   python ./path/to/sbe_unlock.py <full/path/to/snowdir>
+   ```
+
+### Developer Documentation
+This script, `sbe_unlock.py`, is the first step of the automated process of unlocking and using your AWS Snowball Edge device.  
+Key features of this script include:
+- **Argument Parsing**: The script retrieves the path of the Snowball Edge directory from the command line argument.
+- **Unlocking the Device**: It enters the Snowball directory and accesses the endpoint URL and unlock code from the `sbe_config.yaml` file and `manifest.bin` file to unlock the Snowball Edge device.
+- **Check and Wait**: Program continuously checks and waits for unlock process to complete.
+- **Retrieve Access Keys**: Obtains AWS access and secret keys and writes to the Snowball directory as `keys.yaml`.
+
+
+## sbe_profile.py
+
+### Usage
+
+This script configures AWS CLI profiles using the credentials obtained from the Snowball Edge device. It reads the credentials from the `keys.yaml` file created by `sbe_unlock.py` and sets up the AWS CLI profile accordingly. The profile name used for this configuration will be the same as the Snowball directory.
+
+**Run the Script**: Execute the script from the command line with the directory path of the Snowball Edge folder (snowdir) as an argument:
+   ```bash
+   python ./path/to/sbe_profile.py <full/path/to/snowdir>
+   ```
+
+### Developer Documentation
+
+The `sbe_profile.py` script is the second step in the automated setup process of configuring AWS CLI profiles for your Snowball Edge device.  
+Key features of this script include:
+- **Argument Parsing**: Retrieves the path of the Snowball Edge directory from the command line argument and processes it to create the profile name.
+- **AWS Configuration**: Reads the `keys.yaml` file to obtain AWS access and secret keys. It then creates and sets up an AWS CLI profile using these credentials.
+- **Command Execution**: Executes necessary AWS CLI commands to configure the profile with the access keys, secret keys, region, and output format.
+
+## sbe_config.py
+
+### Usage
+
+This script configures the Snowball Edge device by providing it with the necessary details such as the manifest file path, unlock key, and endpoint URL. This will allow the user to configure the default Snowball profile to allow for usage of the SnowballEdge CLI.  
+
+**Run the Script**: Execute the script from the command line with the directory path of the Snowball Edge folder (snowdir) as an argument:
+   ```bash
+   python ./path/to/sbe_config.py <path/to/snowdir>
+   ```
+
+### Developer Documentation
+
+The `sbe_config.py` script is the final step in the automated setup process of configuring your Snowball Edge device.  
+Key features of this script include:
+
+- **Argument Parsing**: Retrieves the Snowball Edge directory path from the command line argument and processes it to determine the configuration.
+- **Device Configuration**: Iteratively configures each of the prompts given by the `snowballEdge configure` command using the provided manifest file, unlock key, and endpoint URL.
+
+
+This configuration will ultimately allow the user to run commands such as:
+   ```bash
+   snowballEdge describe-device
+   ```
+Instead of:
+   ```bash
+   snowballEdge describe-device --endpoint https://123.456.78.900 --manifest-file "C:PATH/TO/manifest.bin" --unlock-code really-big-unlock-code-#
+   ```
 ---
