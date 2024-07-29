@@ -111,9 +111,9 @@ try:
         outbound = dst_endpoint_urls[i % len(dst_endpoint_urls)]
         endpoint_url_distribution.append((inbound, outbound))
 
-    # Function to run the sync_s3_obj.py script, this is necessary to avoid GIL bottleneck
-    def sync_s3_obj(src_bucket, dst_bucket, src_key, dst_key, bytes, src_endpoint_url, dst_endpoint_url, dt_data_json_dir, benchmark_progress):
-        command = f"python sync_s3_obj.py {src_bucket} {dst_bucket} {src_key} {dst_key} {bytes} {src_endpoint_url} {dst_endpoint_url} {dt_data_json_dir}"
+    # Function to run the s3_sync_obj.py script, this is necessary to avoid GIL bottleneck
+    def s3_sync_obj(src_bucket, dst_bucket, src_key, dst_key, bytes, src_endpoint_url, dst_endpoint_url, dt_data_json_dir, benchmark_progress):
+        command = f"python s3_sync_obj.py {src_bucket} {dst_bucket} {src_key} {dst_key} {bytes} {src_endpoint_url} {dst_endpoint_url} {dt_data_json_dir}"
         subprocess.run(command, shell=True, check=True)
         if benchmark_progress:
             # Get the objects in our destination buckets to compare missing objects
@@ -137,7 +137,7 @@ try:
             # END: UPDATE BUCKET OBJECT INFORMATION
             ###
 
-    # Spawn individual sync_s3_obj processes moving 1 object per process, in parallel up to the amount of max_workers at a time.
+    # Spawn individual s3_sync_obj processes moving 1 object per process, in parallel up to the amount of max_workers at a time.
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
         for i, obj_key in enumerate(objects_not_synced.keys()):
@@ -148,7 +148,7 @@ try:
                 benchmark_progress = True
             else:
                 benchmark_progress = False
-            futures.append(executor.submit(sync_s3_obj, src_bucket, dst_bucket, src_key, dst_key, objects_not_synced[obj_key],src_endpoint_url, dst_endpoint_url, dt_data_json_dir, benchmark_progress))
+            futures.append(executor.submit(s3_sync_obj, src_bucket, dst_bucket, src_key, dst_key, objects_not_synced[obj_key],src_endpoint_url, dst_endpoint_url, dt_data_json_dir, benchmark_progress))
 
         # Wait for all futures to complete
         wait(futures)
