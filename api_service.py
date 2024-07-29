@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime
 from flask import Flask, request, jsonify, abort
-from util_s3 import read_config, list_objects, create_s3_client
+from util_s3 import read_config, file_abspath, list_objects, create_s3_client
 
 app = Flask(__name__)
 

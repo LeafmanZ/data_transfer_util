@@ -1,7 +1,7 @@
 import argparse
 import urllib3
 import time
-from util_s3 import read_config, create_s3_client, update_json
+from util_s3 import read_config, file_abspath, create_s3_client, update_json
 
 # Suppress InsecureRequestWarning
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
