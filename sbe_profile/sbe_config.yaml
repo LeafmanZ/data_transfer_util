@@ -1,0 +1,3 @@
+# set up access configuration for snowball
+unlock_key: "unlock-key-numbers-go-here" # unlock key with quotations
+endpoint_url: "https://you.rnu.mbe.rs" # endpoint url of snowball with quotations

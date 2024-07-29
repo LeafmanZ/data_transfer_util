@@ -2,7 +2,7 @@ import os
 import time
 import boto3
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError
-from util_s3 import read_config, create_s3_client
+from util_s3 import read_config, file_abspath, create_s3_client
 
 ###
 # BEGIN: LOAD IN CONFIGURATIONS

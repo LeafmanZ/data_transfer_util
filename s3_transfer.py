@@ -1,4 +1,4 @@
-from util_s3 import read_config, list_objects, create_s3_client, write_json, update_json
+from util_s3 import read_config, file_abspath, list_objects, create_s3_client, write_json, update_json
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, wait
 import time
