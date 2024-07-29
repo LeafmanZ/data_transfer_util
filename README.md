@@ -1,5 +1,6 @@
 
 ---
+---
 
 # S3 Data Transfer Scripts
 
@@ -50,6 +51,8 @@ python s3_sync_obj.py {src_bucket} {dst_bucket} {src_key} {dst_key} {bytes} {src
 - **Data Streaming and Uploading**: Optimizes data transfers by streaming objects directly between buckets to minimize local resource utilization.
 - **Performance Logging**: Records the transfer time and updates a JSON log with the completion details for each object moved.
 
+---
+---
 
 # API Service and Testing
 
