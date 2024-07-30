@@ -56,4 +56,5 @@ while True:
     }
 
     write_json(hs_data_json_dir, failed_endpoints_dict)
+    print(f"Configuration details saved to {hs_data_json_dir}")
     time.sleep(10)
