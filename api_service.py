@@ -22,8 +22,8 @@ log_endpoint_urls = config['log']['endpoint_urls']
 
 log_s3_client = create_s3_client(log_access_key, log_secret_access_key, log_region, log_endpoint_urls[0])
 
-def get_object(epoch_time, retrieve_objects_moved):
-    key = f"{log_prefix}/dt_data_{epoch_time}.json"
+def get_object(file_type, epoch_time, retrieve_objects_moved):
+    key = f"{log_prefix}/{file_type}_data_{epoch_time}.json"
     try:
         response = log_s3_client.get_object(Bucket=log_bucket, Key=key)
         log_data = json.loads(response['Body'].read().decode('utf-8'))
@@ -33,12 +33,12 @@ def get_object(epoch_time, retrieve_objects_moved):
     except log_s3_client.exceptions.NoSuchKey:
         return None
 
-def get_latest_object(retrieve_objects_moved):
+def get_latest_object(file_type, retrieve_objects_moved):
     objects = list_objects(log_bucket, log_prefix, log_s3_client, isSnow=(log_region == 'snow'))
     if not objects:
         return None
-    latest_key = max(objects.keys(), key=lambda key: int(key.split('_')[-1].split('.')[0]))
-    return get_object(int(latest_key.split('_')[-1].split('.')[0]), retrieve_objects_moved)
+    latest_key = max(objects.keys(), key=lambda key: int(key.split('_')[-1].split('.')[0]) if key.startswith(f"{file_type}_data_") else -1)
+    return get_object(file_type, int(latest_key.split('_')[-1].split('.')[0]), retrieve_objects_moved)
 
 @app.route('/', methods=['GET'])
 def list_routes():
@@ -61,12 +61,17 @@ def list_routes():
 def list_logs():
     """List all log files within a specified time range.
     Parameters:
+    - file_type: Type of log file (hs or dt) (required)
     - start: Start time (epoch) (required)
     - end: End time (epoch) (required)
     """
     token = request.headers.get('Authorization')
     if token != TOKEN:
         abort(403)
+
+    file_type = request.args.get('file_type')
+    if file_type not in ['hs', 'dt']:
+        abort(400, "Invalid file_type. Must be 'hs' or 'dt'.")
     
     try:
         start_time = int(request.args.get('start'))
@@ -74,17 +79,18 @@ def list_logs():
     except (TypeError, ValueError):
         abort(400, "Invalid start or end time")
 
-    logs = list_objects(log_bucket, log_prefix, log_s3_client, isSnow=(log_region=='snow')).keys()
+    logs = list_objects(log_bucket, log_prefix, log_s3_client, isSnow=(log_region == 'snow')).keys()
     
     # Filter logs based on start_time and end_time
-    filtered_logs = [log for log in logs if start_time <= int(log.split('_')[-1].split('.')[0]) <= end_time]
+    filtered_logs = [log for log in logs if start_time <= int(log.split('_')[-1].split('.')[0]) <= end_time and log.startswith(f"{file_type}_data_")]
     
     return jsonify(filtered_logs)
 
-@app.route('/log/<int:epoch_time>', methods=['GET'])
-def get_log(epoch_time):
+@app.route('/log/<file_type>/<int:epoch_time>', methods=['GET'])
+def get_log(file_type, epoch_time):
     """Retrieve a specific log file by its epoch time.
     Parameters:
+    - file_type: Type of log file (hs or dt) (required)
     - epoch_time: Epoch time of the log file (required)
     - retrieve_objects_moved: Boolean flag to retrieve 'objects_moved' data (optional)
     """
@@ -92,24 +98,31 @@ def get_log(epoch_time):
     if token != TOKEN:
         abort(403)
     
+    if file_type not in ['hs', 'dt']:
+        abort(400, "Invalid file_type. Must be 'hs' or 'dt'.")
+    
     retrieve_objects_moved = request.args.get('retrieve_objects_moved', 'false').lower() == 'true'
-    log = get_object(epoch_time, retrieve_objects_moved)
+    log = get_object(file_type, epoch_time, retrieve_objects_moved)
     if log is None:
         abort(404)
     return jsonify(log)
 
-@app.route('/log/latest', methods=['GET'])
-def get_latest_log():
+@app.route('/log/latest/<file_type>', methods=['GET'])
+def get_latest_log(file_type):
     """Retrieve the latest log file.
     Parameters:
+    - file_type: Type of log file (hs or dt) (required)
     - retrieve_objects_moved: Boolean flag to retrieve 'objects_moved' data (optional)
     """
     token = request.headers.get('Authorization')
     if token != TOKEN:
         abort(403)
+
+    if file_type not in ['hs', 'dt']:
+        abort(400, "Invalid file_type. Must be 'hs' or 'dt'.")
     
     retrieve_objects_moved = request.args.get('retrieve_objects_moved', 'false').lower() == 'true'
-    log = get_latest_object(retrieve_objects_moved)
+    log = get_latest_object(file_type, retrieve_objects_moved)
     if log is None:
         abort(404)
     return jsonify(log)
@@ -117,4 +130,3 @@ def get_latest_log():
 if __name__ == '__main__':
     context = ('cert.pem', 'key.pem')  # Replace with the actual paths to your SSL certificate and key
     app.run(host='0.0.0.0', port=443, ssl_context=context, debug=False)
-
