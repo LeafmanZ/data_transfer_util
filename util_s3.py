@@ -4,6 +4,7 @@ import boto3
 import json
 import subprocess
 from filelock import FileLock
+import signal
 
 # Function to read JSON file
 def read_json(file_path):
@@ -110,6 +111,48 @@ def create_s3_client(access_key, secret_access_key, region, endpoint_url):
         else:
             s3_client = session.resource('s3', endpoint_url=endpoint_url)
     return s3_client
+
+class TimeoutException(Exception):
+    pass
+
+def timeout_handler(signum, frame):
+    raise TimeoutException
+
+def is_endpoint_healthy(bucket_name, prefix, s3_client, isSnow=False, timeout=2):
+    """List all objects in a given bucket with a specified prefix along with their size, with a timeout."""
+    """Returns True if endpoint is good, Returns False if endpoint is bad."""
+    def inner():
+        objects = {}
+        if isSnow:
+            # Get the bucket instance
+            bucket = s3_client.Bucket(bucket_name)
+
+            for obj in bucket.objects.filter(Prefix=prefix):
+                if not obj.key.endswith('/'):
+                    key = obj.key.replace(prefix, '', 1).lstrip('/')
+                    objects[key] = obj.size
+                break
+            return True
+        else:
+            paginator = s3_client.get_paginator('list_objects_v2')
+            for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
+                if "Contents" in page:
+                    for obj in page["Contents"]:
+                        if not obj["Key"].endswith('/'):
+                            key = obj["Key"].replace(prefix, '', 1).lstrip('/')
+                            objects[key] = obj['Size']
+                break
+        return True
+
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(timeout)  # Set the timeout
+    try:
+        result = inner()
+    except Exception as e:
+        return False
+    finally:
+        signal.alarm(0)  # Disable the alarm
+    return result
 
 def delete_object_version(bucket_name, s3_client, object_key, version_id):
     try:
