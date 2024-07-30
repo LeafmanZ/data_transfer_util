@@ -1,4 +1,4 @@
-from util_s3 import read_config, file_abspath, list_objects, create_s3_client, write_json, update_json
+from util_s3 import read_config, is_endpoint_healthy, list_objects, create_s3_client, write_json, update_json
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, wait
 import time
@@ -27,6 +27,23 @@ dst_secret_access_key = config['dst']['secret_access_key']
 dst_endpoint_urls = config['dst']['endpoint_urls']
 
 log_local_directory = config['log']['local_directory']
+
+# Filter out unhealthy endpoints
+tmp_endpoint_urls = []
+for src_endpoint_url in src_endpoint_urls:
+    print(f'Checking source endpoint: {src_endpoint_url}')
+    src_s3_client = create_s3_client(src_access_key, src_secret_access_key, src_region, src_endpoint_url)
+    if is_endpoint_healthy(src_bucket, src_prefix, src_s3_client, isSnow=(src_region=='snow')):
+        tmp_endpoint_urls.append(src_endpoint_url)
+src_endpoint_urls = tmp_endpoint_urls
+        
+tmp_endpoint_urls = []
+for dst_endpoint_url in dst_endpoint_urls:
+    print(f'Checking destination endpoint: {dst_endpoint_url}')
+    dst_s3_client = create_s3_client(dst_access_key, dst_secret_access_key, dst_region, dst_endpoint_url)
+    if is_endpoint_healthy(dst_bucket, dst_prefix, dst_s3_client, isSnow=(dst_region=='snow')):
+        tmp_endpoint_urls.append(dst_endpoint_url)
+dst_endpoint_urls = tmp_endpoint_urls
 
 max_workers = os.cpu_count()
 start_time = time.time()
