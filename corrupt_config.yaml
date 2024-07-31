@@ -1,0 +1,17 @@
+# set up destination information for cloud
+src:
+  bucket: "dksjfl"
+  bucket_prefix: "sdfldsaf" # ex1 "mysubdir" ex2 "my_data/date_move" ex3 "mysubdir"; does not handle individual objects
+  region: "snow" # set to 'snow' if it is a snowball
+  access_key: 'dsfkljsadf'
+  secret_access_key: 'sdfasadf'
+  endpoint_urls: ['https://1.1.1.1', 'https://1.1.1.2', 'https://1.1.1.3']
+
+# set up destination information for cloud
+dst:
+  bucket: "dfssaifk"
+  bucket_prefix: "dskfsadld" # ex1 "mysubdir" ex2 "my_data/date_move" ex3 "mysubdir"; does not handle individual objects
+  region: "us-east-1"
+  access_key: 'sdasafdasf'
+  secret_access_key: 'dsfsaf'
+  endpoint_urls: ['https://10.1.1.1', 'https://10.1.1.2', 'https://10.1.1.3']
