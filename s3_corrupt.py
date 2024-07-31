@@ -3,12 +3,12 @@ import boto3
 import random
 import io
 from botocore.exceptions import NoCredentialsError, ClientError
-from util_s3 import read_config, create_s3_client
+from util_s3 import read_config, create_s3_client, list_objects
 
 # Process stream object and upload its corrupted version by manipulating bytes
 def process_object(obj_key):
     try:
-        s3_stream = src_s3.get_object(Bucket=src_bucket, Key=obj_key)
+        s3_stream = src_s3.get_object(Bucket=src_bucket, Key=f"{src_folder}/{obj_key}")
         bytedata = bytearray(s3_stream['Body'].read())
         size = len(bytedata)
         for _ in range(500):
@@ -59,12 +59,9 @@ dst_s3 = create_s3_client(dst_access_key, dst_secret_access_key, dst_region, dst
 
 ### Begin Upload
 # Query files/objects within the target bucket folder
-paginator = src_s3.get_paginator('list_objects_v2')
-keys = []
-for page in paginator.paginate(Bucket=src_bucket, Prefix=src_folder):
-    if 'Contents' in page:
-        keys.extend(obj['Key'] for obj in page['Contents'])
+obj_dict = list_objects(src_bucket, src_folder, src_s3, isSnow=False)
+key_list = obj_dict.keys()
 
 # Use ThreadPoolExecutor to execute corruption in parallel
 with ThreadPoolExecutor(max_workers=10) as executor:
-    executor.map(process_object, keys)
+    executor.map(process_object, key_list)
