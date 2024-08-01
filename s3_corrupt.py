@@ -60,7 +60,20 @@ dst_s3 = create_s3_client(dst_access_key, dst_secret_access_key, dst_region, dst
 ### Begin Upload
 # Query files/objects within the target bucket prefix
 obj_dict = list_objects(src_bucket, src_prefix, src_s3, isSnow=(src_region=='snow'))
-key_list = obj_dict.keys()
+
+# Take the queried object dictionary and create a list of object keys up to a maximum byte size (sample_size)
+sample_size = 100000000000 # 100gb--> 100*E9
+
+# Creates a list of obj keys (key_list) to a certain size limit
+total_size = 0
+key_list = []
+
+for key, size in obj_dict.items():
+    if total_size + size <= sample_size:
+        key_list.append(key)
+        total_size += size
+    else:
+        break
 
 # Use ThreadPoolExecutor to execute corruption in parallel
 with ThreadPoolExecutor(max_workers=10) as executor:
