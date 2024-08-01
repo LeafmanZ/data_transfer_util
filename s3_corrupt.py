@@ -23,21 +23,6 @@ def process_object(obj_key):
     except (NoCredentialsError, ClientError) as e:
         print(f"Error processing {obj_key}: {e}")
 
-# Creates a list of obj keys to a certain size limit
-def sample(obj_dict, size_limit):
-    total_size = 0
-    selected_keys = []
-
-    for key, size in obj_dict.items():
-        if total_size + size <= size_limit:
-            selected_keys.append(key)
-            total_size += size
-        else:
-            break
-
-    return selected_keys
-
-
 
 ### Takes the source of the good data transfer
 # Read config.yaml file... ensure that the bucket and prefix in the yaml file dont end in a slash "/"
@@ -78,7 +63,17 @@ obj_dict = list_objects(src_bucket, src_prefix, src_s3, isSnow=(src_region=='sno
 
 # Take the queried object dictionary and create a list of object keys up to a maximum byte size (sample_size)
 sample_size = 100000000000 # 100gb--> 100*E9
-key_list = sample(obj_dict, sample_size)
+
+# Creates a list of obj keys (key_list) to a certain size limit
+total_size = 0
+key_list = []
+
+for key, size in obj_dict.items():
+    if total_size + size <= sample_size:
+        key_list.append(key)
+        total_size += size
+    else:
+        break
 
 # Use ThreadPoolExecutor to execute corruption in parallel
 with ThreadPoolExecutor(max_workers=10) as executor:
