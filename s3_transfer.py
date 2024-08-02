@@ -1,3 +1,4 @@
+import argparse
 from util_s3 import read_config, is_endpoint_healthy, list_objects, create_s3_client, write_json, update_json
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, wait
@@ -7,7 +8,11 @@ import os
 ###
 # BEGIN: LOAD IN CONFIGURATIONS
 ###
-config = read_config()
+parser = argparse.ArgumentParser(description='Using a config.yaml move data between storage environments')
+parser.add_argument('config', type=str, help='The config.yaml that specifies your data transfer.')
+args = parser.parse_args()
+
+config = read_config(args.config)
 
 if not config:
     print("Failed to read the configuration.")
