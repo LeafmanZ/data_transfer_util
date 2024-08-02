@@ -1,7 +1,7 @@
 import argparse
 import urllib3
 import time
-from util_s3 import read_config, file_abspath, create_s3_client, update_json
+from util_s3 import read_config, create_client, update_json
 
 # Suppress InsecureRequestWarning
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -30,10 +30,12 @@ if not config:
     print("Failed to read the configuration.")
     quit()
 
+src_service = config["src"]["service"]
 src_region = config["src"]["region"]
 src_access_key = config['src']['access_key']
 src_secret_access_key = config['src']['secret_access_key']
 
+dst_service = config["dst"]["service"]
 dst_region = config["dst"]["region"]
 dst_access_key = config['dst']['access_key']
 dst_secret_access_key = config['dst']['secret_access_key']
@@ -45,8 +47,8 @@ dst_secret_access_key = config['dst']['secret_access_key']
 start_time = time.time()
 
 # create our source and destination s3 clients so we can interact with our buckets
-src_s3_client = create_s3_client(src_access_key, src_secret_access_key, src_region, args.src_endpoint_url)
-dst_s3_client = create_s3_client(dst_access_key, dst_secret_access_key, dst_region, args.dst_endpoint_url)
+src_s3_client = create_client(src_service, src_access_key, src_secret_access_key, src_region, args.src_endpoint_url)
+dst_s3_client = create_client(dst_service, dst_access_key, dst_secret_access_key, dst_region, args.dst_endpoint_url)
 
 # Stream the object directly directly
 if src_region == 'snow': 

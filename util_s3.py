@@ -5,6 +5,7 @@ import json
 import subprocess
 from filelock import FileLock
 import signal
+from azure.storage.blob import BlobServiceClient
 
 # Function to read JSON file
 def read_json(file_path):
@@ -39,7 +40,6 @@ def file_abspath(ending, dir_path = "."):
 
 # Reads into the sbe_config.yaml file
 def read_config(filename='config.yaml', dir_path = "."):
-    filename = file_abspath(filename , dir_path)
     with open(filename, 'r') as stream:
         try:
             return yaml.safe_load(stream)
@@ -60,9 +60,16 @@ def run_command(command):
         print(f"Unexpected error: {e}")
         return 1, '', str(e)
 
-def list_objects(bucket_name, prefix, s3_client, isSnow=False):
-    """List all objects in a given bucket with a specified prefix along with their size."""
+def list_objects(service, bucket_name, prefix, client, isSnow=False):
+    if service == "AWS":
+        objects = list_s3_objects(bucket_name, prefix, client, isSnow)
+        return objects
+    if service == "AZURE":
+        objects = list_blob_objects(bucket_name, prefix, client)
+        return objects
     
+def list_s3_objects(bucket_name, prefix, s3_client, isSnow=False):
+    """List all objects in a given bucket with a specified prefix along with their size."""
     objects = {}
     if isSnow:
         # Get the bucket instance
@@ -82,6 +89,22 @@ def list_objects(bucket_name, prefix, s3_client, isSnow=False):
                         objects[key] = obj['Size']
     return objects
 
+def list_blob_objects(bucket_name, prefix, az_client):
+    objects = {}
+    container_client = az_client.get_container_client(bucket_name)
+    blob_list = container_client.list_blobs(name_starts_with=prefix)
+    for blob in blob_list:
+        if not blob.name.endswith('/'):
+                        key = blob.name.replace(prefix, '', 1).lstrip('/')
+                        objects[key] = blob.size
+    return objects
+
+def create_client(service, access_key = None, secret_access_key = None, region=None, endpoint_url=None):
+    if service == 'AWS':
+        return create_s3_client(access_key, secret_access_key, region, endpoint_url)
+    elif service == 'AZURE':
+        return create_az_client(access_key)
+    
 def create_s3_client(access_key, secret_access_key, region, endpoint_url):
     
     if endpoint_url == 'no_endpoint':
@@ -111,6 +134,11 @@ def create_s3_client(access_key, secret_access_key, region, endpoint_url):
         else:
             s3_client = session.resource('s3', endpoint_url=endpoint_url)
     return s3_client
+
+def create_az_client(access_key):
+    connection_string = access_key
+    az_client = BlobServiceClient.from_connection_string(connection_string)
+    return az_client
 
 class TimeoutException(Exception):
     pass
