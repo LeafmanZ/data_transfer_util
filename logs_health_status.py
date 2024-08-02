@@ -34,7 +34,7 @@ while True:
     if not os.path.exists(log_local_directory):
         os.makedirs(log_local_directory)
 
-    hs_data_json_dir = os.path.join(log_local_directory, f"hs_data_{int(time.time())}.json")
+    network_status_data_json_dir = os.path.join(log_local_directory, f"network_status_data_{int(time.time())}.json")
 
     src_endpoint_urls_failed = []
     for src_endpoint_url in src_endpoint_urls:
@@ -55,6 +55,6 @@ while True:
         "dst_endpoint_urls_failed": dst_endpoint_urls_failed
     }
 
-    write_json(hs_data_json_dir, failed_endpoints_dict)
-    print(f"Configuration details saved to {hs_data_json_dir}")
+    write_json(network_status_data_json_dir, failed_endpoints_dict)
+    print(f"Configuration details saved to {network_status_data_json_dir}")
     time.sleep(10)

@@ -63,8 +63,8 @@ start_time = time.time()
 if not os.path.exists(log_local_directory):
     os.makedirs(log_local_directory)
 
-dt_data_json_dir = os.path.join(log_local_directory, f"dt_data_{int(start_time)}.json")
-dt_data_dict = {
+data_transfer_data_json_dir = os.path.join(log_local_directory, f"data_transfer_data_{int(start_time)}.json")
+data_transfer_data_dict = {
     "service": "AWS",
     "src_bucket": src_bucket,
     "src_prefix": src_prefix,
@@ -91,8 +91,8 @@ dt_data_dict = {
     "failed_objects": {}
 }
 
-write_json(dt_data_json_dir, dt_data_dict)
-print(f"Configuration details saved to {dt_data_json_dir}")
+write_json(data_transfer_data_json_dir, data_transfer_data_dict)
+print(f"Configuration details saved to {data_transfer_data_json_dir}")
 ###
 # END: SAVE CONFIGURATION INFORMATION TO JSON 
 ###
@@ -115,13 +115,13 @@ try:
     ###
     # BEGIN: UPDATE BUCKET OBJECT INFORMATION
     ###
-    update_dt_data_dict = {"initial_synced_objects": len(objects_synced),
+    update_data_transfer_data_dict = {"initial_synced_objects": len(objects_synced),
                         "initial_unsynced_objects": len(objects_not_synced),
                         "final_synced_objects": len(objects_synced),
                         "final_unsynced_objects": len(objects_not_synced),
                         "completion_percentage": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
                         "total_bytes_to_move": total_bytes_to_move}
-    update_json(dt_data_json_dir, update_dt_data_dict)
+    update_json(data_transfer_data_json_dir, update_data_transfer_data_dict)
     ###
     # END: UPDATE BUCKET OBJECT INFORMATION
     ###
@@ -134,8 +134,8 @@ try:
         endpoint_url_distribution.append((inbound, outbound))
 
     # Function to run the s3_sync_obj.py script, this is necessary to avoid GIL bottleneck
-    def s3_sync_obj(src_bucket, dst_bucket, src_key, dst_key, bytes, src_endpoint_url, dst_endpoint_url, dt_data_json_dir, benchmark_progress):
-        command = f"python s3_sync_obj.py {src_bucket} {dst_bucket} {src_key} {dst_key} {bytes} {src_endpoint_url} {dst_endpoint_url} {dt_data_json_dir}"
+    def s3_sync_obj(src_bucket, dst_bucket, src_key, dst_key, bytes, src_endpoint_url, dst_endpoint_url, data_transfer_data_json_dir, benchmark_progress):
+        command = f"python s3_sync_obj.py {src_bucket} {dst_bucket} {src_key} {dst_key} {bytes} {src_endpoint_url} {dst_endpoint_url} {data_transfer_data_json_dir}"
         subprocess.run(command, shell=True, check=True)
         if benchmark_progress:
             # Get the objects in our destination buckets to compare missing objects
@@ -149,12 +149,12 @@ try:
             ###
             # BEGIN: UPDATE BUCKET OBJECT INFORMATION
             ###
-            update_dt_data_dict = {"final_synced_objects": len(objects_synced),
+            update_data_transfer_data_dict = {"final_synced_objects": len(objects_synced),
                                 "final_unsynced_objects": len(objects_not_synced),
                                 "completion_percentage": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
                                 "bytes_transferred": min(sum(objects_synced.values()), total_bytes_to_move),
                                 "remaining_bytes": sum(objects_not_synced.values()),}
-            update_json(dt_data_json_dir, update_dt_data_dict)
+            update_json(data_transfer_data_json_dir, update_data_transfer_data_dict)
             ###
             # END: UPDATE BUCKET OBJECT INFORMATION
             ###
@@ -170,7 +170,7 @@ try:
                 benchmark_progress = True
             else:
                 benchmark_progress = False
-            futures.append(executor.submit(s3_sync_obj, src_bucket, dst_bucket, src_key, dst_key, objects_not_synced[obj_key],src_endpoint_url, dst_endpoint_url, dt_data_json_dir, benchmark_progress))
+            futures.append(executor.submit(s3_sync_obj, src_bucket, dst_bucket, src_key, dst_key, objects_not_synced[obj_key],src_endpoint_url, dst_endpoint_url, data_transfer_data_json_dir, benchmark_progress))
 
         # Wait for all futures to complete
         wait(futures)
@@ -190,7 +190,7 @@ try:
     # Dictionary of objects that have not been moved or differ from the source to destination
     objects_not_synced = {key: src_objects[key] for key in src_objects if (key not in dst_objects or src_objects[key] != dst_objects[key])}
 
-    new_dt_data_dict = {'final_synced_objects': len(objects_synced),
+    new_data_transfer_data_dict = {'final_synced_objects': len(objects_synced),
                         'final_unsynced_objects': len(objects_not_synced),
                         "completion_percentage": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
                         "bytes_transferred": min(sum(objects_synced.values()), total_bytes_to_move),
@@ -199,12 +199,12 @@ try:
                         'end_time_epoch': int(end_time),
                         'total_duration_seconds': total_time,
                         'status': 'Completed'}
-    update_json(dt_data_json_dir, new_dt_data_dict)
+    update_json(data_transfer_data_json_dir, new_data_transfer_data_dict)
 except:
-    new_dt_data_dict = {
+    new_data_transfer_data_dict = {
         'status': 'Failed'
     }
-    update_json(dt_data_json_dir, new_dt_data_dict)
+    update_json(data_transfer_data_json_dir, new_data_transfer_data_dict)
 ###
 # END: SAVE FINISHING COMPLETION INFORMATION TO JSON
 ###

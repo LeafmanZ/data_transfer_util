@@ -17,7 +17,7 @@ parser.add_argument('bytes', type=int, help='The total size of the object in byt
 parser.add_argument('src_endpoint_url', type=str, help='The source endpoint url for the copied object.')
 parser.add_argument('dst_endpoint_url', type=str, help='The destination endpoint url for the copied object.')
 
-parser.add_argument('dt_data_json_dir', type=str, help='The data transfer json file that we are saving transfer statistics to.')
+parser.add_argument('data_transfer_data_json_dir', type=str, help='The data transfer json file that we are saving transfer statistics to.')
 
 args = parser.parse_args()
 
@@ -69,13 +69,13 @@ print(f"Object '{args.src_key}' has been copied to '{args.dst_key}' in {elapsed_
 ###
 # BEGIN: SAVE FINISHING COMPLETION INFORMATION TO JSON
 ###
-new_dt_data_dict = {'objects_moved': [{'src_key': args.src_key,
+new_data_transfer_data_dict = {'objects_moved': [{'src_key': args.src_key,
                                     'dst_key': args.dst_key,
                                     'bytes': args.bytes,
                                     'epoch_time_start': int(start_time),
                                     'epoch_time_end': int(end_time),
                                     'total_time_seconds': elapsed_time}]}
-update_json(args.dt_data_json_dir, new_dt_data_dict)
+update_json(args.data_transfer_data_json_dir, new_data_transfer_data_dict)
 ###
 # END: SAVE FINISHING COMPLETION INFORMATION TO JSON
 ###
