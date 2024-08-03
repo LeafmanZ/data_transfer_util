@@ -1,6 +1,6 @@
 import subprocess
 import argparse
-from util_s3 import read_config, file_abspath, run_command
+from util_sbe import read_config, file_abspath, run_command
 
 """
 Script Description:
