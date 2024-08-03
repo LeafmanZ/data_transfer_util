@@ -1,5 +1,6 @@
 # set up source information for snowball source
 src:
+  service: "AWS"
   bucket: "dksjfl"
   bucket_prefix: "sdfldsaf" # ex1 "mysubdir" ex2 "my_data/date_move" ex3 "mysubdir"; does not handle individual objects
   region: "snow" # set to 'snow' if it is a snowball
@@ -9,6 +10,7 @@ src:
 
 # set up destination information for cloud
 dst:
+  service: "AWS"
   bucket: "dfssaifk"
   bucket_prefix: "dskfsadld" # ex1 "mysubdir" ex2 "my_data/date_move" ex3 "mysubdir"; does not handle individual objects
   region: "us-east-1"
@@ -18,6 +20,7 @@ dst:
   # endpoint_urls: ['no_endpoint']
 
 log:
+  service: "AWS"
   bucket: "dfssaifk"
   bucket_prefix: "dskfsadld" # ex1 "mysubdir/" ex2 "my_data/date_move" ex3 "mysubdir"; does not handle individual objects
   region: "us-east-1"

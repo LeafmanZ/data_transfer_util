@@ -29,6 +29,7 @@ def process_object(obj_key):
 config = read_config()
 
 # Configure your source AWS credentials from the config.yaml
+src_service = config["src"]["service"]
 src_access_key = config['src']["access_key"]
 src_secret_access_key = config['src']["secret_access_key"]
 src_region = config['src']["region"] # set to 'snow' if it is a snowball
@@ -43,6 +44,7 @@ src_prefix = config['src']['bucket_prefix']
 dst_config = read_config("config_corrupt.yaml")
 
 # Configure your destination AWS credentials from the config_corrupt.yaml
+dst_service = config["src"]["service"]
 dst_access_key = dst_config['src']["access_key"]
 dst_secret_access_key = dst_config['src']["secret_access_key"]
 dst_region = dst_config['src']["region"] # set to 'snow' if it is a snowball
@@ -53,8 +55,8 @@ dst_bucket = dst_config['src']['bucket']
 dst_prefix = dst_config['src']['bucket_prefix']
 
 # Create a source and destination S3 client
-src_s3 = create_s3_client(src_access_key, src_secret_access_key, src_region, src_endpoints[0])
-dst_s3 = create_s3_client(dst_access_key, dst_secret_access_key, dst_region, dst_endpoints[0])
+src_s3 = create_s3_client(src_service, src_access_key, src_secret_access_key, src_region, src_endpoints[0])
+dst_s3 = create_s3_client(dst_service, dst_access_key, dst_secret_access_key, dst_region, dst_endpoints[0])
 
 
 ### Begin Upload
