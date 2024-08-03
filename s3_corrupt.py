@@ -39,10 +39,10 @@ src_prefix = config['src']['bucket_prefix']
 
 
 ### Sets destination as the source of the corrupt data transfer
-# Read corrupt_config.yaml... ensure that the bucket and prefix in the yaml file dont end in a slash "/"
-dst_config = read_config("corrupt_config.yaml")
+# Read config_corrupt.yaml... ensure that the bucket and prefix in the yaml file dont end in a slash "/"
+dst_config = read_config("config_corrupt.yaml")
 
-# Configure your destination AWS credentials from the corrupt_config.yaml
+# Configure your destination AWS credentials from the config_corrupt.yaml
 dst_access_key = dst_config['src']["access_key"]
 dst_secret_access_key = dst_config['src']["secret_access_key"]
 dst_region = dst_config['src']["region"] # set to 'snow' if it is a snowball
