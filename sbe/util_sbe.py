@@ -13,6 +13,7 @@ def file_abspath(ending, dir_path = "."):
 
 # Reads into the sbe_config.yaml file
 def read_config(filename='config.yaml', dir_path = "."):
+    filename = file_abspath(filename , dir_path)
     with open(filename, 'r') as stream:
         try:
             return yaml.safe_load(stream)
