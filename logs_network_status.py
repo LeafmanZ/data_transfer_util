@@ -36,23 +36,49 @@ while True:
 
     network_status_data_json_dir = os.path.join(log_local_directory, f"network_status_data_{int(time.time())}.json")
 
+    src_endpoint_urls_succeeded = []
     src_endpoint_urls_failed = []
     for src_endpoint_url in src_endpoint_urls:
         print(f'Checking source endpoint: {src_endpoint_url}')
         src_s3_client = create_s3_client(src_access_key, src_secret_access_key, src_region, src_endpoint_url)
-        if not is_endpoint_healthy(src_bucket, src_prefix, src_s3_client, isSnow=(src_region=='snow')):
+        if is_endpoint_healthy(src_bucket, src_prefix, src_s3_client, isSnow=(src_region=='snow')):
+            src_endpoint_urls_succeeded.append(src_endpoint_url)
+        else:
             src_endpoint_urls_failed.append(src_endpoint_url)
-            
+    
+    src_endpoints_operational_status = ''
+    if len(src_endpoint_urls_succeeded) == 0:
+        src_endpoints_operational_status = 'critical'
+    elif len(src_endpoint_urls_succeeded) == len(src_endpoint_urls):
+        src_endpoints_operational_status = 'operational'
+    else:
+        src_endpoints_operational_status = 'degraded'
+    
+    dst_endpoint_urls_succeeded = []
     dst_endpoint_urls_failed = []
     for dst_endpoint_url in dst_endpoint_urls:
         print(f'Checking destination endpoint: {dst_endpoint_url}')
         dst_s3_client = create_s3_client(dst_access_key, dst_secret_access_key, dst_region, dst_endpoint_url)
-        if not is_endpoint_healthy(dst_bucket, dst_prefix, dst_s3_client, isSnow=(dst_region=='snow')):
+        if is_endpoint_healthy(dst_bucket, dst_prefix, dst_s3_client, isSnow=(dst_region=='snow')):
+            dst_endpoint_urls_succeeded.append(dst_endpoint_url)
+        else:
             dst_endpoint_urls_failed.append(dst_endpoint_url)
+    
+    dst_endpoints_operational_status = ''
+    if len(dst_endpoint_urls_succeeded) == 0:
+        dst_endpoints_operational_status = 'critical'
+    elif len(dst_endpoint_urls_succeeded) == len(dst_endpoint_urls):
+        dst_endpoints_operational_status = 'operational'
+    else:
+        dst_endpoints_operational_status = 'degraded'
 
     failed_endpoints_dict = {
         "src_endpoint_urls_failed": src_endpoint_urls_failed,
-        "dst_endpoint_urls_failed": dst_endpoint_urls_failed
+        "dst_endpoint_urls_failed": dst_endpoint_urls_failed,
+        "src_endpoint_urls_succeeded": src_endpoint_urls_succeeded,
+        "dst_endpoint_urls_succeeded": dst_endpoint_urls_succeeded,
+        "src_endpoints_operational_status": src_endpoints_operational_status,
+        "dst_endpoints_operational_status": dst_endpoints_operational_status
     }
 
     write_json(network_status_data_json_dir, failed_endpoints_dict)
