@@ -7,6 +7,9 @@ from util_s3 import read_config, create_client, update_json
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 parser = argparse.ArgumentParser(description='Copy a specific object from one S3 bucket to another.')
+parser.add_argument('src_service', type=str, help='The source cloud service.')
+parser.add_argument('dst_service', type=str, help='The destination cloud service.')
+
 parser.add_argument('src_bucket', type=str, help='The source S3 bucket name.')
 parser.add_argument('dst_bucket', type=str, help='The destination S3 bucket name.')
 
@@ -30,12 +33,10 @@ if not config:
     print("Failed to read the configuration.")
     quit()
 
-src_service = config["src"]["service"]
 src_region = config["src"]["region"]
 src_access_key = config['src']['access_key']
 src_secret_access_key = config['src']['secret_access_key']
 
-dst_service = config["dst"]["service"]
 dst_region = config["dst"]["region"]
 dst_access_key = config['dst']['access_key']
 dst_secret_access_key = config['dst']['secret_access_key']
@@ -47,19 +48,25 @@ dst_secret_access_key = config['dst']['secret_access_key']
 start_time = time.time()
 
 # create our source and destination s3 clients so we can interact with our buckets
-src_s3_client = create_client(src_service, src_access_key, src_secret_access_key, src_region, args.src_endpoint_url)
-dst_s3_client = create_client(dst_service, dst_access_key, dst_secret_access_key, dst_region, args.dst_endpoint_url)
+src_client = create_client(args.src_service, src_access_key, src_secret_access_key, src_region, args.src_endpoint_url)
+dst_client = create_client(args.dst_service, dst_access_key, dst_secret_access_key, dst_region, args.dst_endpoint_url)
 
 # Stream the object directly directly
 if src_region == 'snow': 
-    s3_object = src_s3_client.meta.client.get_object(Bucket=args.src_bucket, Key=args.src_key)
-else:
-    s3_object = src_s3_client.get_object(Bucket=args.src_bucket, Key=args.src_key)
+    object = src_client.meta.client.get_object(Bucket=args.src_bucket, Key=args.src_key)["Body"]
+elif args.src_service == "AWS":
+    object = src_client.get_object(Bucket=args.src_bucket, Key=args.src_key)["Body"]
+elif args.src_service == "AZURE":
+    object = src_client.get_blob_client(container = args.src_bucket, blob=args.src_key).download_blob()
+
 # Upload the streamed object to the destination
 if dst_region == 'snow':
-    dst_s3_client.meta.client.upload_fileobj(s3_object['Body'], args.dst_bucket, args.dst_key)
-else:
-    dst_s3_client.upload_fileobj(s3_object['Body'], args.dst_bucket, args.dst_key)
+    if args.src_service == "AWS": 
+        dst_client.meta.client.upload_fileobj(object, args.dst_bucket, args.dst_key)
+elif args.dst_service == "AWS":
+    dst_client.upload_fileobj(object, args.dst_bucket, args.dst_key)
+elif args.dst_service == "AZURE":
+    dst_client.get_blob_client(container=args.dst_bucket, blob=args.dst_key).upload_blob(object, overwrite=True)
 
 # Record the end time
 end_time = time.time()
