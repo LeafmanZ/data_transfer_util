@@ -30,7 +30,7 @@ def update_json(file_path, new_data):
         write_json(file_path, data)
 
 # Finds the absolute path of a file from the current directory
-def file_abspath(ending, dir_path = "."):
+def file_abspath(ending, dir_path = ".."):
     for root, dirs, files in os.walk(dir_path):
         for file in files:
             if file.endswith(ending):
@@ -39,7 +39,8 @@ def file_abspath(ending, dir_path = "."):
                     return os.path.abspath(file_path)
 
 # Reads into the sbe_config.yaml file
-def read_config(filename='config.yaml', dir_path = "."):
+def read_config(filename='config.yaml'):
+    filename = file_abspath(filename)
     with open(filename, 'r') as stream:
         try:
             return yaml.safe_load(stream)
@@ -146,14 +147,14 @@ class TimeoutException(Exception):
 def timeout_handler(signum, frame):
     raise TimeoutException
 
-def is_endpoint_healthy(bucket_name, prefix, s3_client, isSnow=False, timeout=2):
+def is_endpoint_healthy(service, bucket_name, prefix, client, isSnow=False, timeout=2):
     """List all objects in a given bucket with a specified prefix along with their size, with a timeout."""
     """Returns True if endpoint is good, Returns False if endpoint is bad."""
     def inner():
         objects = {}
         if isSnow:
             # Get the bucket instance
-            bucket = s3_client.Bucket(bucket_name)
+            bucket = client.Bucket(bucket_name)
 
             for obj in bucket.objects.filter(Prefix=prefix):
                 if not obj.key.endswith('/'):
@@ -161,14 +162,22 @@ def is_endpoint_healthy(bucket_name, prefix, s3_client, isSnow=False, timeout=2)
                     objects[key] = obj.size
                 break
             return True
-        else:
-            paginator = s3_client.get_paginator('list_objects_v2')
+        elif service == "AWS":
+            paginator = client.get_paginator('list_objects_v2')
             for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
                 if "Contents" in page:
                     for obj in page["Contents"]:
                         if not obj["Key"].endswith('/'):
                             key = obj["Key"].replace(prefix, '', 1).lstrip('/')
                             objects[key] = obj['Size']
+                break
+        elif service == "AZURE":
+            container_client = client.get_container_client(bucket_name)
+            blob_list = container_client.list_blobs()
+            for blob in blob_list:
+                if not blob.name.endswith('/'):
+                    key = blob.name.replace(prefix, '', 1).lstrip('/')
+                    objects[key] = blob.size
                 break
         return True
 

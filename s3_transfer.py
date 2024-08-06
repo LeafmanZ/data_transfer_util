@@ -13,8 +13,6 @@ parser.add_argument('config', type=str, help='The config.yaml that specifies you
 args = parser.parse_args()
 
 config = read_config(args.config)
-if config:
-    print(config)
 
 if not config:
     print("Failed to read the configuration.")
@@ -41,16 +39,16 @@ log_local_directory = config['log']['local_directory']
 tmp_endpoint_urls = []
 for src_endpoint_url in src_endpoint_urls:
     print(f'Checking source endpoint: {src_endpoint_url}')
-    src_s3_client = create_client(src_service, src_access_key, src_secret_access_key, src_region, src_endpoint_url)
-    if is_endpoint_healthy(src_bucket, src_prefix, src_s3_client, isSnow=(src_region=='snow')):
+    src_client = create_client(src_service, src_access_key, src_secret_access_key, src_region, src_endpoint_url)
+    if is_endpoint_healthy(src_service, src_bucket, src_prefix, src_client, isSnow=(src_region=='snow')):
         tmp_endpoint_urls.append(src_endpoint_url)
 src_endpoint_urls = tmp_endpoint_urls
         
 tmp_endpoint_urls = []
 for dst_endpoint_url in dst_endpoint_urls:
     print(f'Checking destination endpoint: {dst_endpoint_url}')
-    dst_s3_client = create_client(dst_service, dst_access_key, dst_secret_access_key, dst_region, dst_endpoint_url)
-    if is_endpoint_healthy(dst_bucket, dst_prefix, dst_s3_client, isSnow=(dst_region=='snow')):
+    dst_client = create_client(dst_service, dst_access_key, dst_secret_access_key, dst_region, dst_endpoint_url)
+    if is_endpoint_healthy(dst_service, dst_bucket, dst_prefix, dst_client, isSnow=(dst_region=='snow')):
         tmp_endpoint_urls.append(dst_endpoint_url)
 dst_endpoint_urls = tmp_endpoint_urls
 
@@ -103,12 +101,12 @@ print(f"Configuration details saved to {data_transfer_data_json_dir}")
 ###
 try:
     # create our source and destination s3 clients so we can interact with our buckets
-    src_s3_client = create_client(src_service, src_access_key, src_secret_access_key, src_region, src_endpoint_urls[0])
-    dst_s3_client = create_client(dst_service, dst_access_key, dst_secret_access_key, dst_region, dst_endpoint_urls[0])
+    src_client = create_client(src_service, src_access_key, src_secret_access_key, src_region, src_endpoint_urls[0])
+    dst_client = create_client(dst_service, dst_access_key, dst_secret_access_key, dst_region, dst_endpoint_urls[0])
 
     # Get the objects in our destination and source buckets to compare missing objects
-    src_objects = list_objects(src_service, src_bucket, src_prefix, src_s3_client, isSnow=(src_region=='snow'))
-    dst_objects = list_objects(dst_service, dst_bucket, dst_prefix, dst_s3_client, isSnow=(dst_region=='snow'))
+    src_objects = list_objects(src_service, src_bucket, src_prefix, src_client, isSnow=(src_region=='snow'))
+    dst_objects = list_objects(dst_service, dst_bucket, dst_prefix, dst_client, isSnow=(dst_region=='snow'))
 
     # Dictionary of objects that have been successfully moved and are identical in both source and destination
     objects_synced = {key: src_objects[key] for key in src_objects if (key in dst_objects and src_objects[key] == dst_objects[key])}
@@ -139,12 +137,12 @@ try:
         endpoint_url_distribution.append((inbound, outbound))
 
     # Function to run the s3_sync_obj.py script, this is necessary to avoid GIL bottleneck
-    def s3_sync_obj(src_bucket, dst_bucket, src_key, dst_key, bytes, src_endpoint_url, dst_endpoint_url, data_transfer_data_json_dir, benchmark_progress):
-        command = f"python s3_sync_obj.py {src_bucket} {dst_bucket} {src_key} {dst_key} {bytes} {src_endpoint_url} {dst_endpoint_url} {data_transfer_data_json_dir}"
+    def s3_sync_obj(src_service, dst_service, src_bucket, dst_bucket, src_key, dst_key, bytes, src_endpoint_url, dst_endpoint_url, data_transfer_data_json_dir, benchmark_progress):
+        command = f"python s3_sync_obj.py {src_service} {dst_service} {src_bucket} {dst_bucket} {src_key} {dst_key} {bytes} {src_endpoint_url} {dst_endpoint_url} {data_transfer_data_json_dir}"
         subprocess.run(command, shell=True, check=True)
         if benchmark_progress:
             # Get the objects in our destination buckets to compare missing objects
-            dst_objects = list_objects(dst_service, dst_bucket, dst_prefix, dst_s3_client, isSnow=(dst_region=='snow'))
+            dst_objects = list_objects(dst_service, dst_bucket, dst_prefix, dst_client, isSnow=(dst_region=='snow'))
 
             # Dictionary of objects that have been successfully moved and are identical in both source and destination
             objects_synced = {key: src_objects[key] for key in src_objects if (key in dst_objects and src_objects[key] == dst_objects[key])}
@@ -175,7 +173,7 @@ try:
                 benchmark_progress = True
             else:
                 benchmark_progress = False
-            futures.append(executor.submit(s3_sync_obj, src_bucket, dst_bucket, src_key, dst_key, objects_not_synced[obj_key],src_endpoint_url, dst_endpoint_url, data_transfer_data_json_dir, benchmark_progress))
+            futures.append(executor.submit(s3_sync_obj, src_service, dst_service, src_bucket, dst_bucket, src_key, dst_key, objects_not_synced[obj_key],src_endpoint_url, dst_endpoint_url, data_transfer_data_json_dir, benchmark_progress))
 
         # Wait for all futures to complete
         wait(futures)
@@ -188,7 +186,7 @@ try:
     # BEGIN: SAVE FINISHING COMPLETION INFORMATION TO JSON
     ###
     # Get the objects in our destination buckets to compare missing objects
-    dst_objects = list_objects(dst_service, dst_bucket, dst_prefix, dst_s3_client, isSnow=(dst_region=='snow'))
+    dst_objects = list_objects(dst_service, dst_bucket, dst_prefix, dst_client, isSnow=(dst_region=='snow'))
 
     # Dictionary of objects that have been successfully moved and are identical in both source and destination
     objects_synced = {key: src_objects[key] for key in src_objects if (key in dst_objects and src_objects[key] == dst_objects[key])}
