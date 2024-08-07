@@ -89,8 +89,11 @@ data_transfer_data_dict = {
     "final_unsynced_objects": False,
     "completion_percentage": False,
     "total_bytes_to_move": False,
+    "total_equivalent_gigabytes_to_move": False,
     "bytes_transferred": False,
+    "equivalent_gigabytes_transferred": False,
     "remaining_bytes": False,
+    "equivalent_remaining_bytes": False,
     "failed_objects": {}
 }
 
@@ -123,7 +126,8 @@ try:
                         "final_synced_objects": len(objects_synced),
                         "final_unsynced_objects": len(objects_not_synced),
                         "completion_percentage": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
-                        "total_bytes_to_move": total_bytes_to_move}
+                        "total_bytes_to_move": total_bytes_to_move,
+                        "total_equivalent_gigabytes_to_move": float(f"{(total_bytes_to_move/1073741824):.3f}")}
     update_json(data_transfer_data_json_dir, update_data_transfer_data_dict)
     ###
     # END: UPDATE BUCKET OBJECT INFORMATION
@@ -156,7 +160,9 @@ try:
                                 "final_unsynced_objects": len(objects_not_synced),
                                 "completion_percentage": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
                                 "bytes_transferred": min(sum(objects_synced.values()), total_bytes_to_move),
-                                "remaining_bytes": sum(objects_not_synced.values()),}
+                                "equivalent_gigabytes_transferred": float(f"{(min(sum(objects_synced.values()), total_bytes_to_move)/1073741824):.3f}"),
+                                "remaining_bytes": sum(objects_not_synced.values()),
+                                "equivalent_remaining_bytes": float(f"{(sum(objects_not_synced.values())/1073741824):.3f}")}
             update_json(data_transfer_data_json_dir, update_data_transfer_data_dict)
             ###
             # END: UPDATE BUCKET OBJECT INFORMATION
@@ -197,10 +203,13 @@ try:
                         'final_unsynced_objects': len(objects_not_synced),
                         "completion_percentage": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
                         "bytes_transferred": min(sum(objects_synced.values()), total_bytes_to_move),
+                        "equivalent_gigabytes_transferred": float(f"{(min(sum(objects_synced.values()), total_bytes_to_move)/1073741824):.3f}"),
                         "remaining_bytes": sum(objects_not_synced.values()),
+                        "equivalent_remaining_bytes": float(f"{(sum(objects_not_synced.values())/1073741824):.3f}"),
                         'failed_objects': objects_not_synced,
                         'end_time_epoch': int(end_time),
                         'total_duration_seconds': total_time,
+                        'inferred_gbps': float(f"{((min(sum(objects_synced.values()), total_bytes_to_move)/1073741824)*8/total_time):.3f}"),
                         'status': 'Completed'}
     update_json(data_transfer_data_json_dir, new_data_transfer_data_dict)
 except:

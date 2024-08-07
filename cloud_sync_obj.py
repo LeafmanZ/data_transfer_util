@@ -81,6 +81,7 @@ print(f"Object '{args.src_key}' has been copied to '{args.dst_key}' in {elapsed_
 new_data_transfer_data_dict = {'objects_moved': [{'src_key': args.src_key,
                                     'dst_key': args.dst_key,
                                     'bytes': args.bytes,
+                                    'equivalent_gigabytes': float(f"{(args.bytes/1073741824):.3f}"),
                                     'epoch_time_start': int(start_time),
                                     'epoch_time_end': int(end_time),
                                     'total_time_seconds': elapsed_time}]}
