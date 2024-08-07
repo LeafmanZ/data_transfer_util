@@ -52,7 +52,7 @@ for dst_endpoint_url in dst_endpoint_urls:
         tmp_endpoint_urls.append(dst_endpoint_url)
 dst_endpoint_urls = tmp_endpoint_urls
 
-max_workers = max(os.cpu_count(), 33)
+max_workers = os.cpu_count()//3
 start_time = time.time()
 ###
 # END: LOAD IN CONFIGURATIONS
