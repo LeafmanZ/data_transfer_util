@@ -1,30 +1,55 @@
-# set up source information for snowball source
-src:
+# Only have a single configuration for source, and a single configuration for destination
+# Configuration for AWS/Snowball Edge Device as a source
+source:
   service: "AWS"
-  bucket: "dksjfl"
-  bucket_prefix: "sdfldsaf" # ex1 "mysubdir" ex2 "my_data/date_move" ex3 "mysubdir"; does not handle individual objects
-  region: "snow" # set to 'snow' if it is a snowball
-  access_key: 'dsfkljsadf'
-  secret_access_key: 'sdfasadf'
+  bucket: "your-source-bucket-name"
+  bucket_prefix: "your-source-prefix" # Examples: "mysubdir", "my_data/date_move"
+  region: "snow" # Set to 'snow' for Snowball Edge device; otherwise, specify the actual region
+  access_key: 'your-access-key' # Use environment variables or a credentials file for security
+  secret_access_key: 'your-secret-access-key' # Use environment variables or a credentials file for security
   endpoint_urls: ['https://1.1.1.1', 'https://1.1.1.2', 'https://1.1.1.3']
-
-# set up destination information for cloud
-dst:
-  service: "AWS"
-  bucket: "dfssaifk"
-  bucket_prefix: "dskfsadld" # ex1 "mysubdir" ex2 "my_data/date_move" ex3 "mysubdir"; does not handle individual objects
-  region: "us-east-1"
-  access_key: 'sdasafdasf'
-  secret_access_key: 'dsfsaf'
-  endpoint_urls: ['https://10.1.1.1', 'https://10.1.1.2', 'https://10.1.1.3']
+  # Uncomment the following line if no custom endpoint is required
   # endpoint_urls: ['no_endpoint']
 
-log:
-  service: "AWS"
-  bucket: "dfssaifk"
-  bucket_prefix: "dskfsadld" # ex1 "mysubdir/" ex2 "my_data/date_move" ex3 "mysubdir"; does not handle individual objects
-  region: "us-east-1"
-  access_key: 'sdasafdasf'
-  secret_access_key: 'dsfsaf'
+# Configuration for AZURE as a source
+source:
+  service: "AZURE"
+  bucket: "your-source-container-name"
+  bucket_prefix: "your-source-container-subdirectory" # Examples: "mysubdir", "my_data/date_move"
+  region: "leave empty or just like this"
+  access_key: 'you-azure-connection_string' # 
+  secret_access_key: 'leave empty or just like this' # Use environment variables or a credentials file for security
   endpoint_urls: ['no_endpoint']
-  local_directory: 'logs'
+
+# Configuration for AWS/Snowball Edge Device as a destination
+destination:
+  service: "AWS"
+  bucket: "your-destination-bucket-name"
+  bucket_prefix: "your-destination-prefix" # Examples: "mysubdir", "my_data/date_move"
+  region: "us-east-1" # Specify your actual AWS region
+  access_key: 'your-access-key' # Use environment variables or a credentials file for security
+  secret_access_key: 'your-secret-access-key' # Use environment variables or a credentials file for security
+  endpoint_urls: ['https://1.1.1.1', 'https://1.1.1.2', 'https://1.1.1.3']
+  # Uncomment the following line if no custom endpoint is required
+  # endpoint_urls: ['no_endpoint']
+
+# Configuration for AZURE as a destination
+destination:
+  service: "AZURE"
+  bucket: "your-destination-container-name"
+  bucket_prefix: "your-destination-container-subdirectory" # Examples: "mysubdir", "my_data/date_move"
+  region: "leave empty or just like this"
+  access_key: 'you-azure-connection_string' # 
+  secret_access_key: 'leave empty or just like this' # Use environment variables or a credentials file for security
+  endpoint_urls: ['no_endpoint']
+
+# Configuration for Logging
+logging:
+  service: "AWS"
+  bucket: "your-logging-bucket-name"
+  bucket_prefix: "your-logging-prefix" # Examples: "logs/", "my_data/date_move"
+  region: "us-east-1" # Specify your actual AWS region
+  access_key: 'your-access-key' # Use environment variables or a credentials file for security
+  secret_access_key: 'your-secret-access-key' # Use environment variables or a credentials file for security
+  endpoint_urls: ['no_endpoint'] # Default to no custom endpoint if not required
+  local_directory: 'logs' # Directory for storing local log files

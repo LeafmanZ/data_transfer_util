@@ -26,7 +26,7 @@ log_endpoint_urls = config['log']['endpoint_urls']
 tmp_endpoint_urls = []
 for log_endpoint_url in log_endpoint_urls:
     print(f'Checking destination endpoint: {log_endpoint_url}')
-    log_client = create_s3_client(log_service, log_access_key, log_secret_access_key, log_region, log_endpoint_url)
+    log_client = create_s3_client(log_access_key, log_secret_access_key, log_region, log_endpoint_url)
     if is_endpoint_healthy(log_service, log_bucket, log_prefix, log_client, isSnow=(log_region=='snow')):
         tmp_endpoint_urls.append(log_endpoint_url)
 log_endpoint_urls = tmp_endpoint_urls
