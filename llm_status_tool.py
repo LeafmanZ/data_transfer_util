@@ -1,10 +1,13 @@
 import threading
 import time
-from utils import read_config, list_objects, create_s3_client
+from utils import read_config, list_objects, create_s3_client, is_endpoint_healthy
 import json
 from queue import Queue
 import ollama
 
+###
+# BEGIN: LOAD IN CONFIGURATIONS
+###
 # Load configurations
 config = read_config()
 
@@ -19,6 +22,17 @@ log_region = config["log"]["region"]
 log_access_key = config['log']['access_key']
 log_secret_access_key = config['log']['secret_access_key']
 log_endpoint_urls = config['log']['endpoint_urls']
+
+tmp_endpoint_urls = []
+for log_endpoint_url in log_endpoint_urls:
+    print(f'Checking destination endpoint: {log_endpoint_url}')
+    log_client = create_s3_client(log_service, log_access_key, log_secret_access_key, log_region, log_endpoint_url)
+    if is_endpoint_healthy(log_service, log_bucket, log_prefix, log_client, isSnow=(log_region=='snow')):
+        tmp_endpoint_urls.append(log_endpoint_url)
+log_endpoint_urls = tmp_endpoint_urls
+###
+# END: LOAD IN CONFIGURATIONS
+###
 
 # Initialize S3 client and log objects
 log_s3_client = create_s3_client(log_access_key, log_secret_access_key, log_region, log_endpoint_urls[0])

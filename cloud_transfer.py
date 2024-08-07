@@ -100,7 +100,7 @@ print(f"Configuration details saved to {data_transfer_data_json_dir}")
 # END: SAVE CONFIGURATION INFORMATION TO JSON 
 ###
 try:
-    # create our source and destination s3 clients so we can interact with our buckets
+    # create our source and destination clients so we can interact with our buckets
     src_client = create_client(src_service, src_access_key, src_secret_access_key, src_region, src_endpoint_urls[0])
     dst_client = create_client(dst_service, dst_access_key, dst_secret_access_key, dst_region, dst_endpoint_urls[0])
 

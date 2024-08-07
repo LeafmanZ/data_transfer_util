@@ -7,6 +7,9 @@ from filelock import FileLock
 import signal
 from azure.storage.blob import BlobServiceClient
 
+###
+# BEGIN: LOGGING JSON UTILITY
+###
 # Function to read JSON file
 def read_json(file_path):
     with open(file_path, 'r') as json_file:
@@ -28,7 +31,13 @@ def update_json(file_path, new_data):
             else:
                 data[key] = value
         write_json(file_path, data)
+###
+# END: LOGGING JSON UTILITY
+###
 
+###
+# BEGIN: YAML READING UTILITY
+###
 # Finds the absolute path of a file from the current directory
 def file_abspath(ending, dir_path = ".."):
     for root, dirs, files in os.walk(dir_path):
@@ -47,6 +56,9 @@ def read_config(filename='config.yaml'):
         except yaml.YAMLError as exc:
             print(exc)
             return None
+###
+# END: YAML READING UTILITY
+###
 
 # Runs subprocess commands and waits for command to finish
 def run_command(command):
@@ -60,46 +72,10 @@ def run_command(command):
     except Exception as e:
         print(f"Unexpected error: {e}")
         return 1, '', str(e)
-
-def list_objects(service, bucket_name, prefix, client, isSnow=False):
-    if service == "AWS":
-        objects = list_s3_objects(bucket_name, prefix, client, isSnow)
-        return objects
-    if service == "AZURE":
-        objects = list_blob_objects(bucket_name, prefix, client)
-        return objects
     
-def list_s3_objects(bucket_name, prefix, s3_client, isSnow=False):
-    """List all objects in a given bucket with a specified prefix along with their size."""
-    objects = {}
-    if isSnow:
-        # Get the bucket instance
-        bucket = s3_client.Bucket(bucket_name)
-
-        for obj in bucket.objects.filter(Prefix=prefix):
-            if not obj.key.endswith('/'):
-                key = obj.key.replace(prefix, '', 1).lstrip('/')
-                objects[key] = obj.size
-    else:
-        paginator = s3_client.get_paginator('list_objects_v2')
-        for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
-            if "Contents" in page:
-                for obj in page["Contents"]:
-                    if not obj["Key"].endswith('/'):
-                        key = obj["Key"].replace(prefix, '', 1).lstrip('/')
-                        objects[key] = obj['Size']
-    return objects
-
-def list_blob_objects(bucket_name, prefix, az_client):
-    objects = {}
-    container_client = az_client.get_container_client(bucket_name)
-    blob_list = container_client.list_blobs(name_starts_with=prefix)
-    for blob in blob_list:
-        if not blob.name.endswith('/'):
-                        key = blob.name.replace(prefix, '', 1).lstrip('/')
-                        objects[key] = blob.size
-    return objects
-
+###
+# BEGIN: CREATE CLIENTS UTILITY
+###
 def create_client(service, access_key = None, secret_access_key = None, region=None, endpoint_url=None):
     if service == 'AWS':
         return create_s3_client(access_key, secret_access_key, region, endpoint_url)
@@ -140,7 +116,58 @@ def create_az_client(access_key):
     connection_string = access_key
     az_client = BlobServiceClient.from_connection_string(connection_string)
     return az_client
+###
+# END: CREATE CLIENTS UTILITY
+###
 
+###
+# BEGIN: LIST OBJECTS UTILITY
+###
+def list_objects(service, bucket_name, prefix, client, isSnow=False):
+    if service == "AWS":
+        objects = list_s3_objects(bucket_name, prefix, client, isSnow)
+        return objects
+    if service == "AZURE":
+        objects = list_blob_objects(bucket_name, prefix, client)
+        return objects
+    
+def list_s3_objects(bucket_name, prefix, s3_client, isSnow=False):
+    """List all objects in a given bucket with a specified prefix along with their size."""
+    objects = {}
+    if isSnow:
+        # Get the bucket instance
+        bucket = s3_client.Bucket(bucket_name)
+
+        for obj in bucket.objects.filter(Prefix=prefix):
+            if not obj.key.endswith('/'):
+                key = obj.key.replace(prefix, '', 1).lstrip('/')
+                objects[key] = obj.size
+    else:
+        paginator = s3_client.get_paginator('list_objects_v2')
+        for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
+            if "Contents" in page:
+                for obj in page["Contents"]:
+                    if not obj["Key"].endswith('/'):
+                        key = obj["Key"].replace(prefix, '', 1).lstrip('/')
+                        objects[key] = obj['Size']
+    return objects
+
+def list_blob_objects(bucket_name, prefix, az_client):
+    objects = {}
+    container_client = az_client.get_container_client(bucket_name)
+    blob_list = container_client.list_blobs(name_starts_with=prefix)
+    for blob in blob_list:
+        if not blob.name.endswith('/'):
+                        key = blob.name.replace(prefix, '', 1).lstrip('/')
+                        objects[key] = blob.size
+    return objects
+###
+# END: LIST OBJECTS UTILITY
+###
+
+###
+# BEGIN: SERVICE ENDPOINT CHECKING UTILITY
+###
 class TimeoutException(Exception):
     pass
 
@@ -190,7 +217,13 @@ def is_endpoint_healthy(service, bucket_name, prefix, client, isSnow=False, time
     finally:
         signal.alarm(0)  # Disable the alarm
     return result
+###
+# END: SERVICE ENDPOINT CHECKING UTILITY
+###
 
+###
+# BEGIN: DELETE OBJECTS UTLITY
+###
 def delete_object_version(bucket_name, s3_client, object_key, version_id):
     try:
         # Call delete_object with the Bucket, Key, and VersionId as keyword arguments
@@ -234,3 +267,6 @@ def permanently_delete_subdir(bucket, prefix, access_key, secret_access_key, reg
 
     except Exception as e:
         print(f"Error listing or deleting object versions: {e}")
+###
+# END: DELETE OBJECTS UTLITY
+###

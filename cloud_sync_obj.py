@@ -6,12 +6,16 @@ from utils import read_config, create_client, update_json
 # Suppress InsecureRequestWarning
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-parser = argparse.ArgumentParser(description='Copy a specific object from one S3 bucket to another.')
+###
+# BEGIN: LOAD IN CONFIGURATIONS
+###
+
+parser = argparse.ArgumentParser(description='Copy a specific object from one bucket to another.')
 parser.add_argument('src_service', type=str, help='The source cloud service.')
 parser.add_argument('dst_service', type=str, help='The destination cloud service.')
 
-parser.add_argument('src_bucket', type=str, help='The source S3 bucket name.')
-parser.add_argument('dst_bucket', type=str, help='The destination S3 bucket name.')
+parser.add_argument('src_bucket', type=str, help='The source bucket name.')
+parser.add_argument('dst_bucket', type=str, help='The destination bucket name.')
 
 parser.add_argument('src_key', type=str, help='The source object key to copy.')
 parser.add_argument('dst_key', type=str, help='The destination object key for the copied object.')
@@ -24,9 +28,6 @@ parser.add_argument('data_transfer_data_json_dir', type=str, help='The data tran
 
 args = parser.parse_args()
 
-###
-# BEGIN: LOAD IN CONFIGURATIONS
-###
 config = read_config()
 
 if not config:
@@ -47,11 +48,11 @@ dst_secret_access_key = config['dst']['secret_access_key']
 # Record the start time
 start_time = time.time()
 
-# create our source and destination s3 clients so we can interact with our buckets
+# create our source and destination cloud clients so we can interact with our buckets
 src_client = create_client(args.src_service, src_access_key, src_secret_access_key, src_region, args.src_endpoint_url)
 dst_client = create_client(args.dst_service, dst_access_key, dst_secret_access_key, dst_region, args.dst_endpoint_url)
 
-# Stream the object directly directly
+# Stream the object directly directly from the source
 if src_region == 'snow': 
     object = src_client.meta.client.get_object(Bucket=args.src_bucket, Key=args.src_key)["Body"]
 elif args.src_service == "AWS":
@@ -59,7 +60,7 @@ elif args.src_service == "AWS":
 elif args.src_service == "AZURE":
     object = src_client.get_blob_client(container = args.src_bucket, blob=args.src_key).download_blob()
 
-# Upload the streamed object to the 
+# Upload the streamed object to the destination
 if dst_region == 'snow':
     dst_client.meta.client.upload_fileobj(object, args.dst_bucket, args.dst_key)
 elif args.dst_service == "AWS":
