@@ -8,8 +8,17 @@ from utils import read_config, create_client, list_objects
 # Process stream object and upload its corrupted version by manipulating bytes
 def process_object(obj_key):
     try:
-        s3_stream = src_client.get_object(Bucket=src_bucket, Key=f"{src_prefix}/{obj_key}")
-        bytedata = bytearray(s3_stream['Body'].read())
+        src_key = f"{src_prefix}/{obj_key}"
+        if src_region == 'snow': 
+            object = src_client.meta.client.get_object(Bucket=src_bucket, Key=src_key)["Body"]
+            bytedata = bytearray(object['Body'].read())
+        elif src_service == "AWS":
+            object = src_client.get_object(Bucket=src_bucket, Key=src_key)["Body"]
+            bytedata = bytearray(object['Body'].read())
+        elif src_service == "AZURE":
+            object = src_client.get_blob_client(container = src_bucket, blob=src_key).download_blob()
+            bytedata = bytearray(object.readall())
+        
         size = len(bytedata)
         for _ in range(500):
             if size == 0:
@@ -17,9 +26,18 @@ def process_object(obj_key):
             pos = random.randint(0, size - 1)
             bytedata[pos] = random.randint(0,255)
         corrupted_stream = io.BytesIO(bytedata)
-        new_key = f"{dst_prefix.rstrip('/')}/{obj_key}".lstrip('/')
-        dst_client.upload_fileobj(corrupted_stream, dst_bucket, new_key)
-        print(f"Corrupted and uploaded {obj_key} to {new_key}")
+
+        dst_key = f"{dst_prefix.rstrip('/')}/{obj_key}".lstrip('/')
+        # Upload the streamed object to the 
+        if dst_region == 'snow':
+            dst_client.meta.client.upload_fileobj(object, dst_bucket, dst_key)
+        elif dst_service == "AWS":
+            dst_client.upload_fileobj(object, dst_bucket, dst_key)
+        elif dst_service == "AZURE":
+            dst_client.get_blob_client(container=dst_bucket, blob=dst_key).upload_blob(object, overwrite=True)
+
+        dst_client.upload_fileobj(corrupted_stream, dst_bucket, dst_key)
+        print(f"Corrupted and uploaded {obj_key} to {dst_key}")
     except (NoCredentialsError, ClientError) as e:
         print(f"Error processing {obj_key}: {e}")
 
@@ -57,7 +75,6 @@ dst_prefix = dst_config['src']['bucket_prefix']
 # Create a source and destination S3 client
 src_client = create_client(src_service, src_access_key, src_secret_access_key, src_region, src_endpoints[0])
 dst_client = create_client(dst_service, dst_access_key, dst_secret_access_key, dst_region, dst_endpoints[0])
-
 
 ### Begin Upload
 # Query files/objects within the target bucket prefix

@@ -61,8 +61,7 @@ elif args.src_service == "AZURE":
 
 # Upload the streamed object to the 
 if dst_region == 'snow':
-    if args.src_service == "AWS": 
-        dst_client.meta.client.upload_fileobj(object, args.dst_bucket, args.dst_key)
+    dst_client.meta.client.upload_fileobj(object, args.dst_bucket, args.dst_key)
 elif args.dst_service == "AWS":
     dst_client.upload_fileobj(object, args.dst_bucket, args.dst_key)
 elif args.dst_service == "AZURE":
