@@ -1,4 +1,4 @@
-from util_s3 import read_config, create_s3_client, is_endpoint_healthy, write_json
+from utils import read_config, create_client, is_endpoint_healthy, write_json
 import time
 import os
 
@@ -10,6 +10,7 @@ config = read_config()
 if not config:
     print("Failed to read the configuration.")
 
+src_service = config['src']['service']
 src_bucket = config["src"]["bucket"]
 src_prefix = config["src"]["bucket_prefix"]
 src_region = config["src"]["region"]
@@ -17,6 +18,7 @@ src_access_key = config['src']['access_key']
 src_secret_access_key = config['src']['secret_access_key']
 src_endpoint_urls = config['src']['endpoint_urls']
 
+dst_service = config['dst']['service']
 dst_bucket = config["dst"]["bucket"]
 dst_prefix = config["dst"]["bucket_prefix"]
 dst_region = config["dst"]["region"]
@@ -40,8 +42,8 @@ while True:
     src_endpoint_urls_failed = []
     for src_endpoint_url in src_endpoint_urls:
         print(f'Checking source endpoint: {src_endpoint_url}')
-        src_s3_client = create_s3_client(src_access_key, src_secret_access_key, src_region, src_endpoint_url)
-        if is_endpoint_healthy(src_bucket, src_prefix, src_s3_client, isSnow=(src_region=='snow')):
+        src_client = create_client(src_service, src_access_key, src_secret_access_key, src_region, src_endpoint_url)
+        if is_endpoint_healthy(src_service, src_bucket, src_prefix, src_client, isSnow=(src_region=='snow')):
             src_endpoint_urls_succeeded.append(src_endpoint_url)
         else:
             src_endpoint_urls_failed.append(src_endpoint_url)
@@ -58,8 +60,8 @@ while True:
     dst_endpoint_urls_failed = []
     for dst_endpoint_url in dst_endpoint_urls:
         print(f'Checking destination endpoint: {dst_endpoint_url}')
-        dst_s3_client = create_s3_client(dst_access_key, dst_secret_access_key, dst_region, dst_endpoint_url)
-        if is_endpoint_healthy(dst_bucket, dst_prefix, dst_s3_client, isSnow=(dst_region=='snow')):
+        dst_client = create_client(dst_service, dst_access_key, dst_secret_access_key, dst_region, dst_endpoint_url)
+        if is_endpoint_healthy(dst_service, dst_bucket, dst_prefix, dst_client, isSnow=(dst_region=='snow')):
             dst_endpoint_urls_succeeded.append(dst_endpoint_url)
         else:
             dst_endpoint_urls_failed.append(dst_endpoint_url)

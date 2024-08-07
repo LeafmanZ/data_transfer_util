@@ -3,7 +3,7 @@ import boto3
 import random
 import io
 from botocore.exceptions import NoCredentialsError, ClientError
-from util_s3 import read_config, create_client, list_objects
+from utils import read_config, create_client, list_objects
 
 # Process stream object and upload its corrupted version by manipulating bytes
 def process_object(obj_key):

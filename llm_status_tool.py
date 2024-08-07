@@ -1,6 +1,6 @@
 import threading
 import time
-from util_s3 import read_config, list_objects, create_s3_client
+from utils import read_config, list_objects, create_s3_client
 import json
 from queue import Queue
 import ollama
@@ -22,7 +22,6 @@ log_endpoint_urls = config['log']['endpoint_urls']
 
 # Initialize S3 client and log objects
 log_s3_client = create_s3_client(log_access_key, log_secret_access_key, log_region, log_endpoint_urls[0])
-log_objects = list_objects(log_service, log_bucket, log_prefix, log_s3_client, isSnow=(log_region=='snow'))
 
 # Shared variables with threading lock
 lock = threading.Lock()
@@ -45,6 +44,8 @@ def background_task():
     global data_transfer_logs, network_status_logs, latest_data_transfer_data, latest_network_status_data, data_transfer_logs_wdtime, network_status_logs_wdtime, latest_objects_moved, latest_data_transfer_log, latest_network_status_log
     while True:
         with lock:
+            log_objects = list_objects(log_service, log_bucket, log_prefix, log_s3_client, isSnow=(log_region=='snow'))
+
             data_transfer_logs = {k: v for k, v in log_objects.items() if k.startswith('data_transfer') and 'lock' not in k}
             network_status_logs = {k: v for k, v in log_objects.items() if k.startswith('network_status') and 'lock' not in k}
 

@@ -1,5 +1,5 @@
 import argparse
-from util_s3 import read_config, is_endpoint_healthy, list_objects, write_json, update_json, create_client
+from utils import read_config, is_endpoint_healthy, list_objects, write_json, update_json, create_client
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, wait
 import time
@@ -136,9 +136,9 @@ try:
         outbound = dst_endpoint_urls[i % len(dst_endpoint_urls)]
         endpoint_url_distribution.append((inbound, outbound))
 
-    # Function to run the s3_sync_obj.py script, this is necessary to avoid GIL bottleneck
-    def s3_sync_obj(src_service, dst_service, src_bucket, dst_bucket, src_key, dst_key, bytes, src_endpoint_url, dst_endpoint_url, data_transfer_data_json_dir, benchmark_progress):
-        command = f"python s3_sync_obj.py {src_service} {dst_service} {src_bucket} {dst_bucket} {src_key} {dst_key} {bytes} {src_endpoint_url} {dst_endpoint_url} {data_transfer_data_json_dir}"
+    # Function to run the cloud_sync_obj.py script, this is necessary to avoid GIL bottleneck
+    def cloud_sync_obj(src_service, dst_service, src_bucket, dst_bucket, src_key, dst_key, bytes, src_endpoint_url, dst_endpoint_url, data_transfer_data_json_dir, benchmark_progress):
+        command = f"python cloud_sync_obj.py {src_service} {dst_service} {src_bucket} {dst_bucket} {src_key} {dst_key} {bytes} {src_endpoint_url} {dst_endpoint_url} {data_transfer_data_json_dir}"
         subprocess.run(command, shell=True, check=True)
         if benchmark_progress:
             # Get the objects in our destination buckets to compare missing objects
@@ -162,7 +162,7 @@ try:
             # END: UPDATE BUCKET OBJECT INFORMATION
             ###
 
-    # Spawn individual s3_sync_obj processes moving 1 object per process, in parallel up to the amount of max_workers at a time.
+    # Spawn individual cloud_sync_obj processes moving 1 object per process, in parallel up to the amount of max_workers at a time.
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
         for i, obj_key in enumerate(objects_not_synced.keys()):
@@ -173,7 +173,7 @@ try:
                 benchmark_progress = True
             else:
                 benchmark_progress = False
-            futures.append(executor.submit(s3_sync_obj, src_service, dst_service, src_bucket, dst_bucket, src_key, dst_key, objects_not_synced[obj_key],src_endpoint_url, dst_endpoint_url, data_transfer_data_json_dir, benchmark_progress))
+            futures.append(executor.submit(cloud_sync_obj, src_service, dst_service, src_bucket, dst_bucket, src_key, dst_key, objects_not_synced[obj_key],src_endpoint_url, dst_endpoint_url, data_transfer_data_json_dir, benchmark_progress))
 
         # Wait for all futures to complete
         wait(futures)

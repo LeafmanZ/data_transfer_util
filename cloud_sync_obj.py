@@ -1,7 +1,7 @@
 import argparse
 import urllib3
 import time
-from util_s3 import read_config, create_client, update_json
+from utils import read_config, create_client, update_json
 
 # Suppress InsecureRequestWarning
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -59,7 +59,7 @@ elif args.src_service == "AWS":
 elif args.src_service == "AZURE":
     object = src_client.get_blob_client(container = args.src_bucket, blob=args.src_key).download_blob()
 
-# Upload the streamed object to the destination
+# Upload the streamed object to the 
 if dst_region == 'snow':
     if args.src_service == "AWS": 
         dst_client.meta.client.upload_fileobj(object, args.dst_bucket, args.dst_key)
