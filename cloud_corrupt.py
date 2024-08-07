@@ -11,10 +11,10 @@ def process_object(obj_key):
         src_key = f"{src_prefix}/{obj_key}"
         if src_region == 'snow': 
             object = src_client.meta.client.get_object(Bucket=src_bucket, Key=src_key)["Body"]
-            bytedata = bytearray(object['Body'].read())
+            bytedata = bytearray(object.read())
         elif src_service == "AWS":
             object = src_client.get_object(Bucket=src_bucket, Key=src_key)["Body"]
-            bytedata = bytearray(object['Body'].read())
+            bytedata = bytearray(object.read())
         elif src_service == "AZURE":
             object = src_client.get_blob_client(container = src_bucket, blob=src_key).download_blob()
             bytedata = bytearray(object.readall())
@@ -30,13 +30,12 @@ def process_object(obj_key):
         dst_key = f"{dst_prefix.rstrip('/')}/{obj_key}".lstrip('/')
         # Upload the streamed object to the 
         if dst_region == 'snow':
-            dst_client.meta.client.upload_fileobj(object, dst_bucket, dst_key)
+            dst_client.meta.client.upload_fileobj(corrupted_stream, dst_bucket, dst_key)
         elif dst_service == "AWS":
-            dst_client.upload_fileobj(object, dst_bucket, dst_key)
+            dst_client.upload_fileobj(corrupted_stream, dst_bucket, dst_key)
         elif dst_service == "AZURE":
-            dst_client.get_blob_client(container=dst_bucket, blob=dst_key).upload_blob(object, overwrite=True)
+            dst_client.get_blob_client(container=dst_bucket, blob=dst_key).upload_blob(corrupted_stream, overwrite=True)
 
-        dst_client.upload_fileobj(corrupted_stream, dst_bucket, dst_key)
         print(f"Corrupted and uploaded {obj_key} to {dst_key}")
     except (NoCredentialsError, ClientError) as e:
         print(f"Error processing {obj_key}: {e}")
