@@ -135,7 +135,8 @@ def summarize_recent_data_transfer_activity(timeframe_hours=24):
         return {'time_period': f'Last {timeframe_hours} hours',
                 'total_failed_transfers':failed_transfers, 
                 'total_successful_transfers': successful_transfers, 
-                'total_bytes_transferred': bytes_transferred, 
+                'total_bytes_transferred': bytes_transferred,
+                "total_equivalent_gigabytes_transferred": float(f"{(bytes_transferred/1073741824):.3f}"),
                 'total_synced_objects': final_synced_objects}
     
 def get_summary_of_available_knowledge():
