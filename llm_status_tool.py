@@ -193,6 +193,7 @@ while True:
                     {'role': 'user', 'content': f'{user_prompt}. Do not calculate math. Only answer based on knowledge you have. No hypotheticals.'}],
         stream=True,
     )
+    
     print('AGENT: ', end = '')
     for chunk in stream:
         print(chunk['message']['content'], end='', flush=True)

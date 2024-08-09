@@ -1,6 +1,6 @@
 # Only have a single configuration for source, and a single configuration for destination
 # Configuration for AWS/Snowball Edge Device as a source
-source:
+src:
   service: "AWS"
   bucket: "your-source-bucket-name"
   bucket_prefix: "your-source-prefix" # Examples: "mysubdir", "my_data/date_move"
@@ -12,7 +12,7 @@ source:
   # endpoint_urls: ['no_endpoint']
 
 # Configuration for AZURE as a source
-source:
+src:
   service: "AZURE"
   bucket: "your-source-container-name"
   bucket_prefix: "your-source-container-subdirectory" # Examples: "mysubdir", "my_data/date_move"
@@ -22,7 +22,7 @@ source:
   endpoint_urls: ['no_endpoint']
 
 # Configuration for AWS/Snowball Edge Device as a destination
-destination:
+dst:
   service: "AWS"
   bucket: "your-destination-bucket-name"
   bucket_prefix: "your-destination-prefix" # Examples: "mysubdir", "my_data/date_move"
@@ -34,7 +34,7 @@ destination:
   # endpoint_urls: ['no_endpoint']
 
 # Configuration for AZURE as a destination
-destination:
+dst:
   service: "AZURE"
   bucket: "your-destination-container-name"
   bucket_prefix: "your-destination-container-subdirectory" # Examples: "mysubdir", "my_data/date_move"
@@ -44,7 +44,7 @@ destination:
   endpoint_urls: ['no_endpoint']
 
 # Configuration for Logging
-logging:
+log:
   service: "AWS"
   bucket: "your-logging-bucket-name"
   bucket_prefix: "your-logging-prefix" # Examples: "logs/", "my_data/date_move"

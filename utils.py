@@ -38,18 +38,8 @@ def update_json(file_path, new_data):
 ###
 # BEGIN: YAML READING UTILITY
 ###
-# Finds the absolute path of a file from the current directory
-def file_abspath(ending, dir_path = ".."):
-    for root, dirs, files in os.walk(dir_path):
-        for file in files:
-            if file.endswith(ending):
-                file_path = os.path.join(root, file)
-                if os.path.isfile(file_path):
-                    return os.path.abspath(file_path)
-
 # Reads into the sbe_config.yaml file
 def read_config(filename='config.yaml'):
-    filename = file_abspath(filename)
     with open(filename, 'r') as stream:
         try:
             return yaml.safe_load(stream)

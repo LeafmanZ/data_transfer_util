@@ -209,7 +209,7 @@ try:
                         'failed_objects': objects_not_synced,
                         'end_time_epoch': int(end_time),
                         'total_duration_seconds': total_time,
-                        'inferred_gbps': float(f"{((min(sum(objects_synced.values()), total_bytes_to_move)/1073741824)*8/total_time):.3f}"),
+                        'speed_gbps': float(f"{((min(sum(objects_synced.values()), total_bytes_to_move)/1073741824)*8/total_time):.3f}"),
                         'status': 'Completed'}
     update_json(data_transfer_data_json_dir, new_data_transfer_data_dict)
 except:
