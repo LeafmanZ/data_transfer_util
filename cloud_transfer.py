@@ -125,7 +125,7 @@ try:
                         "initial_unsynced_objects": len(objects_not_synced),
                         "final_synced_objects": len(objects_synced),
                         "final_unsynced_objects": len(objects_not_synced),
-                        "completion_percentage": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
+                        "completion_percentage": 100*len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
                         "total_bytes_to_move": total_bytes_to_move,
                         "total_equivalent_gigabytes_to_move": float(f"{(total_bytes_to_move/1073741824):.3f}")}
     update_json(data_transfer_data_json_dir, update_data_transfer_data_dict)
@@ -142,7 +142,7 @@ try:
 
     # Function to run the cloud_sync_obj.py script, this is necessary to avoid GIL bottleneck
     def cloud_sync_obj(src_service, dst_service, src_bucket, dst_bucket, src_key, dst_key, bytes, src_endpoint_url, dst_endpoint_url, data_transfer_data_json_dir, benchmark_progress):
-        command = f"python cloud_sync_obj.py {src_service} {dst_service} {src_bucket} {dst_bucket} {src_key} {dst_key} {bytes} {src_endpoint_url} {dst_endpoint_url} {data_transfer_data_json_dir}"
+        command = f'python cloud_sync_obj.py "{src_service}" "{dst_service}" "{src_bucket}" "{dst_bucket}" "{src_key}" "{dst_key}" "{bytes}" "{src_endpoint_url}" "{dst_endpoint_url}" "{data_transfer_data_json_dir}" "{args.config}"'
         subprocess.run(command, shell=True, check=True)
         if benchmark_progress:
             # Get the objects in our destination buckets to compare missing objects
@@ -158,7 +158,7 @@ try:
             ###
             update_data_transfer_data_dict = {"final_synced_objects": len(objects_synced),
                                 "final_unsynced_objects": len(objects_not_synced),
-                                "completion_percentage": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
+                                "completion_percentage": 100 * len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
                                 "bytes_transferred": min(sum(objects_synced.values()), total_bytes_to_move),
                                 "equivalent_gigabytes_transferred": float(f"{(min(sum(objects_synced.values()), total_bytes_to_move)/1073741824):.3f}"),
                                 "remaining_bytes": sum(objects_not_synced.values()),
@@ -201,7 +201,7 @@ try:
 
     new_data_transfer_data_dict = {'final_synced_objects': len(objects_synced),
                         'final_unsynced_objects': len(objects_not_synced),
-                        "completion_percentage": len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
+                        "completion_percentage": 100 * len(objects_synced)/(len(objects_synced)+len(objects_not_synced)),
                         "bytes_transferred": min(sum(objects_synced.values()), total_bytes_to_move),
                         "equivalent_gigabytes_transferred": float(f"{(min(sum(objects_synced.values()), total_bytes_to_move)/1073741824):.3f}"),
                         "remaining_bytes": sum(objects_not_synced.values()),

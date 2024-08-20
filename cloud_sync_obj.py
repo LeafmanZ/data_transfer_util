@@ -25,10 +25,12 @@ parser.add_argument('src_endpoint_url', type=str, help='The source endpoint url 
 parser.add_argument('dst_endpoint_url', type=str, help='The destination endpoint url for the copied object.')
 
 parser.add_argument('data_transfer_data_json_dir', type=str, help='The data transfer json file that we are saving transfer statistics to.')
+parser.add_argument('config', type=str, help='The configuration file we are using in our transfer.')
+
 
 args = parser.parse_args()
 
-config = read_config()
+config = read_config(args.config)
 
 if not config:
     print("Failed to read the configuration.")

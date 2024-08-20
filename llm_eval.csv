@@ -1,0 +1,85 @@
+prompt,report_function,agent_function
+what is the network status?,get_current_network_status(),network-status-page
+tell me my failed endpoints,get_current_network_status(),network-status-page
+wat is my operational status,get_current_network_status(),network-status-page
+wat is the status of the network,get_current_network_status(),network-status-page
+how is my network health,get_current_network_status(),network-status-page
+howhealthy is my network,get_current_network_status(),network-status-page
+how is the status of my netowrk,get_current_network_status(),network-status-page
+when was my network status last updated,get_current_network_status(),network-status-page
+are there any degraded endpoints?,get_current_network_status(),network-status-page
+
+I want to move my data,get_data_transfer_instructions(),transfer-configuration-page
+How do I transfer my data,get_data_transfer_instructions(),transfer-configuration-page
+Sync my data please,get_data_transfer_instructions(),transfer-configuration-page
+my boss asked me to move objects from aws to azure,get_data_transfer_instructions(),transfer-configuration-page
+tell me how to transfer my data,get_data_transfer_instructions(),transfer-configuration-page
+i need to move data from snowball to azure,get_data_transfer_instructions(),transfer-configuration-page
+how can I transfer my data?,get_data_transfer_instructions(),transfer-configuration-page
+what do I need to do to transfer data,get_data_transfer_instructions(),transfer-configuration-page
+i need help moving data,get_data_transfer_instructions(),transfer-configuration-page
+teach me how to transfer sync my data,get_data_transfer_instructions(),transfer-configuration-page
+how can I sync data from azure to aws,get_data_transfer_instructions(),transfer-configuration-page
+teach me how to move data from azure to azure,get_data_transfer_instructions(),transfer-configuration-page
+
+what is the current data transfer?,get_latest_data_transfer_status(),transfer-status-history-page
+Give me updates on my recent transfer,get_latest_data_transfer_status(),transfer-status-history-page
+give me updates on my recent sync,get_latest_data_transfer_status(),transfer-status-history-page
+tell me the source and destination of my sync,get_latest_data_transfer_status(),transfer-status-history-page
+wat is my progress onmy data transfer,get_latest_data_transfer_status(),transfer-status-history-page
+in my sync was is the status of it,get_latest_data_transfer_status(),transfer-status-history-page
+i want a report on my current transfer,get_latest_data_transfer_status(),transfer-status-history-page
+I want a report on my transfer,get_latest_data_transfer_status(),transfer-status-history-page
+I want a resport on my sync,get_latest_data_transfer_status(),transfer-status-history-page
+what are the endpoints being used in my sync,get_latest_data_transfer_status(),transfer-status-history-page
+what is the source endpoint of my data transfer,get_latest_data_transfer_status(),transfer-status-history-page
+what is my current data transfer source,get_latest_data_transfer_status(),transfer-status-history-page
+tell me my data transfer source,get_latest_data_transfer_status(),transfer-status-history-page
+tell me my transfer source,get_latest_data_transfer_status(),transfer-status-history-page
+give me my most recent sync destination,get_latest_data_transfer_status(),transfer-status-history-page
+how many objects am I currently trying to move,get_latest_data_transfer_status(),transfer-status-history-page
+in my data sync how much data did I moved,get_latest_data_transfer_status(),transfer-status-history-page
+in my data sync how much data was moved,get_latest_data_transfer_status(),transfer-status-history-page
+
+what is the cumulative amount of data moved in the last week?,summarize_data_transfer_activity(timeframe_hours=168),transfer-statistics-page
+over the last week how much did we sync?,summarize_data_transfer_activity(timeframe_hours=168),transfer-statistics-page
+during the month how many objects were moved?,summarize_data_transfer_activity(timeframe_hours=720),transfer-statistics-page
+in all of the last 13 hours how much data was moved?,summarize_data_transfer_activity(timeframe_hours=13),transfer-statistics-page
+how much data did we sync in the last 3 days?,summarize_data_transfer_activity(timeframe_hours=72),transfer-statistics-page
+how many objects did we transfer over the last?,summarize_data_transfer_activity(timeframe_hours=24),transfer-statistics-page
+in our data sync transfer how many successful and unsucessful transfers did we have last week?,summarize_data_transfer_activity(timeframe_hours=168),transfer-statistics-page
+
+what are you able to perform?,get_summary_of_available_knowledge(),home-menu-page
+wat r u avle to do?,get_summary_of_available_knowledge(),home-menu-page
+wat r u able to do?,get_summary_of_available_knowledge(),home-menu-page
+wat do u know,get_summary_of_available_knowledge(),home-menu-page
+what can you tell me,get_summary_of_available_knowledge(),home-menu-page
+what functions or actions are you able to do,get_summary_of_available_knowledge(),home-menu-page
+tell me the controls you can give me,get_summary_of_available_knowledge(),home-menu-page
+tell what I am able to do with you,get_summary_of_available_knowledge(),home-menu-page
+what are you?,get_summary_of_available_knowledge(),home-menu-page
+how do u work?,get_summary_of_available_knowledge(),home-menu-page
+
+what is yugioh?,no_relevant_function(),home-menu-page
+write me some python code that prints hello world,no_relevant_function(),home-menu-page
+list all the characters in brave heart?,no_relevant_function(),home-menu-page
+will danareys win the iron throne?,no_relevant_function(),home-menu-page
+when will you learn to be good?,no_relevant_function(),home-menu-page
+god is worshipped by many popeple,no_relevant_function(),home-menu-page
+did ramsay bolton win the game of thrones,no_relevant_function(),home-menu-page
+write me some flask boilerplate,no_relevant_function(),home-menu-page
+Who is the trident owned by,no_relevant_function(),home-menu-page
+When are you going to leave for peru,no_relevant_function(),home-menu-page
+what is the capital of France?,no_relevant_function(),home-menu-page
+write a function to reverse a string in python,no_relevant_function(),home-menu-page
+who won the FIFA World Cup in 2018?,no_relevant_function(),home-menu-page
+tell me a joke,no_relevant_function(),home-menu-page
+how do I make an API call in JavaScript?,no_relevant_function(),home-menu-page
+who is the president of the United States?,no_relevant_function(),home-menu-page
+what is the best way to learn Python?,no_relevant_function(),home-menu-page
+calculate the factorial of 5,no_relevant_function(),home-menu-page
+explain the theory of relativity,no_relevant_function(),home-menu-page
+where can I find the nearest coffee shop?,no_relevant_function(),home-menu-page
+give me some flask boiler plate with html?,no_relevant_function(),home-menu-page
+pyhton function to print 1-10?,no_relevant_function(),home-menu-page
+from pygments import highlight from pygments.lexers import get_lexer_by_name guess_lexer from pygments.formatters import HtmlFormatter,no_relevant_function(),home-menu-page

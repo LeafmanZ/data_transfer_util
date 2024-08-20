@@ -4,8 +4,11 @@ import boto3
 import json
 import subprocess
 from filelock import FileLock
-import signal
+# import signal
 from azure.storage.blob import BlobServiceClient
+import concurrent.futures
+import re
+
 
 ###
 # BEGIN: LOGGING JSON UTILITY
@@ -71,7 +74,7 @@ def create_client(service, access_key = None, secret_access_key = None, region=N
         return create_s3_client(access_key, secret_access_key, region, endpoint_url)
     elif service == 'AZURE':
         return create_az_client(access_key)
-    
+
 def create_s3_client(access_key, secret_access_key, region, endpoint_url):
     
     if endpoint_url == 'no_endpoint':
@@ -104,6 +107,21 @@ def create_s3_client(access_key, secret_access_key, region, endpoint_url):
 
 def create_az_client(access_key):
     connection_string = access_key
+
+    pattern = (
+        r"^DefaultEndpointsProtocol=https;"
+        r"AccountName=[a-zA-Z0-9+/=]+;" # for future production use, put in a bunch of valid account names.
+        r"AccountKey=[a-zA-Z0-9+/=]+;"
+        r"EndpointSuffix=core.windows.net"
+    )
+    
+    match = re.match(pattern, connection_string)
+    
+    if not match:
+        raise ValueError("Invalid connection string format")
+    
+    print("Connection string is valid")
+
     az_client = BlobServiceClient.from_connection_string(connection_string)
     return az_client
 ###
@@ -114,6 +132,8 @@ def create_az_client(access_key):
 # BEGIN: LIST OBJECTS UTILITY
 ###
 def list_objects(service, bucket_name, prefix, client, isSnow=False):
+    if prefix == '/':
+        prefix=''
     if service == "AWS":
         objects = list_s3_objects(bucket_name, prefix, client, isSnow)
         return objects
@@ -122,6 +142,7 @@ def list_objects(service, bucket_name, prefix, client, isSnow=False):
         return objects
     
 def list_s3_objects(bucket_name, prefix, s3_client, isSnow=False):
+    prefix = prefix.lstrip('/') + '/'
     """List all objects in a given bucket with a specified prefix along with their size."""
     objects = {}
     if isSnow:
@@ -158,17 +179,14 @@ def list_blob_objects(bucket_name, prefix, az_client):
 ###
 # BEGIN: SERVICE ENDPOINT CHECKING UTILITY
 ###
-class TimeoutException(Exception):
-    pass
-
-def timeout_handler(signum, frame):
-    raise TimeoutException
-
 def is_endpoint_healthy(service, bucket_name, prefix, client, isSnow=False, timeout=2):
     """List all objects in a given bucket with a specified prefix along with their size, with a timeout."""
     """Returns True if endpoint is good, Returns False if endpoint is bad."""
+    prefix = prefix.lstrip('/') + '/'
+    if prefix == '/':
+        prefix=''
     def inner():
-        objects = {}
+        objects = {'No objects are inside this directory': 'No Objects Found'}
         if isSnow:
             # Get the bucket instance
             bucket = client.Bucket(bucket_name)
@@ -178,7 +196,9 @@ def is_endpoint_healthy(service, bucket_name, prefix, client, isSnow=False, time
                     key = obj.key.replace(prefix, '', 1).lstrip('/')
                     objects[key] = obj.size
                 break
-            return True
+            if len(objects) > 1:
+                objects.pop('No objects are inside this directory')
+            return objects
         elif service == "AWS":
             paginator = client.get_paginator('list_objects_v2')
             for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
@@ -190,22 +210,28 @@ def is_endpoint_healthy(service, bucket_name, prefix, client, isSnow=False, time
                 break
         elif service == "AZURE":
             container_client = client.get_container_client(bucket_name)
-            blob_list = container_client.list_blobs()
+            blob_list = container_client.list_blobs(name_starts_with=prefix)
+            count = 0  # Initialize a counter
             for blob in blob_list:
                 if not blob.name.endswith('/'):
                     key = blob.name.replace(prefix, '', 1).lstrip('/')
                     objects[key] = blob.size
-                break
-        return True
+                    count += 1  # Increment the counter
+                    if count >= 5:  # Break the loop after processing 5 objects
+                        break
+        if len(objects) > 1:
+            objects.pop('No objects are inside this directory')
+        return objects
 
-    signal.signal(signal.SIGALRM, timeout_handler)
-    signal.alarm(timeout)  # Set the timeout
-    try:
-        result = inner()
-    except Exception as e:
-        return False
-    finally:
-        signal.alarm(0)  # Disable the alarm
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(inner)
+        try:
+            result = future.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            return False
+        except Exception as e:
+            return False
+
     return result
 ###
 # END: SERVICE ENDPOINT CHECKING UTILITY
@@ -226,37 +252,55 @@ def delete_object_version(bucket_name, s3_client, object_key, version_id):
     except Exception as e:
         print(f"Error deleting object: {e}")
 
-def permanently_delete_subdir(bucket, prefix, access_key, secret_access_key, region, endpoint_url):
+def permanently_delete_subdir(service, bucket, prefix, access_key, secret_access_key=None, region=None, endpoint_url=None):
     # Initialize S3 client with optional credentials and region
-    s3_client = create_s3_client(access_key, secret_access_key, region, endpoint_url)
+    client = create_client(service, access_key, secret_access_key, region, endpoint_url)
+    if service == "AWS":
+        # Begin Delete Process
+        try:
+            files=0
+            while True:
+                # List object versions including delete markers with the specified prefix
+                response = client.list_object_versions(Bucket=bucket, Prefix=prefix)
+                if service == "AWS":
+                    # Process delete markers and versions
+                    for version in response.get('Versions', []):
+                        key = version['Key']
+                        version_id = version['VersionId']
+                        delete_object_version(bucket, client, key, version_id)
+                        files+=1
 
-    # Begin Delete Process
-    try:
-        files=0
-        while True:
-            # List object versions including delete markers with the specified prefix
-            response = s3_client.list_object_versions(Bucket=bucket, Prefix=prefix)
+                    for delete_marker in response.get('DeleteMarkers', []):
+                        key = delete_marker['Key']
+                        version_id = delete_marker['VersionId']
+                        delete_object_version(bucket, client, key, version_id)
+                        files+=1
+                    
+                    #Check if there are more results to fetch
+                    if not response.get('IsTruncated', False):
+                        break  # Exit the loop if no more results are available
+                print(f'Files Deleted: {files}')
+        except Exception as e:
+            print(f"Error listing or deleting object versions: {e}")
+    else:
+        try:
+            files = 0
+            # Get the container client
+            container_client = client.get_container_client(bucket)
 
-            # Process delete markers and versions
-            for version in response.get('Versions', []):
-                key = version['Key']
-                version_id = version['VersionId']
-                delete_object_version(bucket, s3_client, key, version_id)
+            # List all blobs in the container
+            blob_list = container_client.list_blobs()
+
+            # Delete each blob in the container
+            for blob in blob_list:
+                blob_client = container_client.get_blob_client(blob.name)
+                print(f"Deleting blob: {blob.name}")
+                blob_client.delete_blob()
                 files+=1
 
-            for delete_marker in response.get('DeleteMarkers', []):
-                key = delete_marker['Key']
-                version_id = delete_marker['VersionId']
-                delete_object_version(bucket, s3_client, key, version_id)
-                files+=1
-            
-            #Check if there are more results to fetch
-            if not response.get('IsTruncated', False):
-                break  # Exit the loop if no more results are available
-        print(f'Files Deleted: {files}')
-
-    except Exception as e:
-        print(f"Error listing or deleting object versions: {e}")
+            print(f"All blobs have been deleted in container {bucket}: {files} files deleted")
+        except Exception as e:
+            print(f"Error listing or deleting object versions: {e}")
 ###
 # END: DELETE OBJECTS UTLITY
 ###

@@ -1,0 +1,168 @@
+<div class="container my-5">
+    <div class="accordion" id="accordion"></div>
+</div>
+
+<script>
+    async function fetchKeys() {
+        try {
+            const response = await fetch('/get-list-data-transfers');
+            const keys = await response.json();
+    
+            const accordion = document.getElementById('accordion');
+            const openKeys = [];
+    
+            const collapses = accordion.querySelectorAll('.accordion-collapse.show');
+            collapses.forEach(collapse => {
+                openKeys.push(collapse.id);
+            });
+    
+            const currentItems = [...accordion.querySelectorAll('.accordion-item')];
+            const currentKeys = currentItems.map(item => item.querySelector('.accordion-button').dataset.bsTarget.replace('#collapse-', ''));
+    
+            // Identify keys to remove
+            const keysToRemove = currentKeys.filter(key => !keys.includes(key));
+            // Identify keys to add
+            const keysToAdd = keys.filter(key => !currentKeys.includes(key));
+    
+            // Remove old items
+            keysToRemove.forEach(key => {
+                const item = accordion.querySelector(`#collapse-${key}`).closest('.accordion-item');
+                if (item) accordion.removeChild(item);
+            });
+    
+            // Add or update items
+            for (const key of keysToAdd) {
+                // Extract epoch time from the key assuming it's in the format `data_transfer_data_<epoch>.json`
+                const epochMatch = key.match(/data_transfer_data_(\d+)\.json/);
+                let dateTimeString = '';
+    
+                if (epochMatch) {
+                    const epochTime = parseInt(epochMatch[1]);
+                    const dateTime = new Date(epochTime * 1000);
+                    dateTimeString = dateTime.toLocaleString(); // Convert to a readable datetime string
+                }
+    
+                const accordionItem = document.createElement('div');
+                accordionItem.classList.add('accordion-item');
+    
+                const accordionHeader = document.createElement('h2');
+                accordionHeader.classList.add('accordion-header');
+    
+                const accordionButton = document.createElement('button');
+                accordionButton.classList.add('accordion-button', 'collapsed'); // Adding 'collapsed' initially
+                accordionButton.type = 'button';
+                accordionButton.dataset.bsToggle = 'collapse';
+                accordionButton.dataset.bsTarget = `#collapse-${key}`;
+                accordionButton.setAttribute('aria-expanded', 'false');
+                accordionButton.innerHTML = `
+                    <div style="display: flex; align-items: center;">
+                        <span style="display: inline-block; width: 180px;"><strong>${dateTimeString}</strong></span>
+                        <span>&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                        <span>${key}</span>
+                    </div>
+                `;
+
+                const accordionCollapse = document.createElement('div');
+                accordionCollapse.id = `collapse-${key}`;
+                accordionCollapse.classList.add('accordion-collapse', 'collapse');
+    
+                const accordionBody = document.createElement('div');
+                accordionBody.classList.add('accordion-body');
+                accordionBody.innerText = 'Loading...';  // Placeholder content
+    
+                // Restore the state of the accordion if it was open before
+                if (openKeys.includes(`collapse-${key}`)) {
+                    accordionCollapse.classList.add('show');
+                    accordionButton.classList.remove('collapsed');
+                    accordionButton.setAttribute('aria-expanded', 'true');
+    
+                    // Fetch data immediately if the accordion is already open
+                    const data = await fetchAccordionData(key);
+                    populateAccordionBody(accordionBody, data);
+                }
+    
+                accordionCollapse.appendChild(accordionBody);
+                accordionHeader.appendChild(accordionButton);
+                accordionItem.appendChild(accordionHeader);
+                accordionItem.appendChild(accordionCollapse);
+    
+                // Insert the new item at the top
+                accordion.insertBefore(accordionItem, accordion.firstChild);
+    
+                // Only add event listener if not already open (or else, it will fetch again)
+                if (!openKeys.includes(`collapse-${key}`)) {
+                    accordionCollapse.addEventListener('show.bs.collapse', async function () {
+                        const data = await fetchAccordionData(key);
+                        populateAccordionBody(accordionBody, data);
+                    });
+                }
+            }
+    
+        } catch (error) {
+            console.error('Error fetching keys:', error);
+        }
+    }
+    
+    async function fetchAccordionData(key) {
+        try {
+            const response = await fetch(`/get-data-transfer-log?key=${key}`);
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error fetching accordion data:', error);
+            return null;
+        }
+    }
+    
+    function populateAccordionBody(accordionBody, data) {
+        if (data) {
+            accordionBody.innerHTML = 
+                `<p><strong>Source Service:</strong> ${data.src_service}</p>
+                <p><strong>Source Bucket:</strong> ${data.src_bucket}</p>
+                <p><strong>Source Prefix:</strong> ${data.src_prefix}</p>
+                <p><strong>Source Region:</strong> ${data.src_region}</p>
+                <p><strong>Destination Service:</strong> ${data.dst_service}</p>
+                <p><strong>Destination Bucket:</strong> ${data.dst_bucket}</p>
+                <p><strong>Destination Prefix:</strong> ${data.dst_prefix}</p>
+                <p><strong>Destination Region:</strong> ${data.dst_region}</p>
+                <p><strong>Status:</strong> ${data.status}</p>
+                <p><strong>Start Time:</strong> ${new Date(data.start_time_epoch * 1000).toLocaleString()}</p>
+                <p><strong>End Time:</strong> ${new Date(data.end_time_epoch * 1000).toLocaleString()}</p>
+                <p><strong>Total Duration (Seconds):</strong> ${data.total_duration_seconds}</p>
+                <p><strong>Total Bytes Transferred:</strong> ${data.bytes_transferred}</p>
+                <p><strong>Equivalent Gigabytes Transferred:</strong> ${data.equivalent_gigabytes_transferred}</p>
+                <p><strong>Remaining Bytes:</strong> ${data.remaining_bytes}</p>
+                <p><strong>Completion Percentage:</strong> ${data.completion_percentage}</p>
+                <p><strong>Inferred Gbps:</strong> ${data.inferred_gbps}</p>`;
+    
+            if (data.failed_objects && Object.keys(data.failed_objects).length > 0) {
+                const failedObjectKeys = Object.keys(data.failed_objects).join(', ');
+                accordionBody.innerHTML += `<p><strong>Failed Objects:</strong> ${failedObjectKeys}</p>`;
+            } else {
+                accordionBody.innerHTML += `<p><strong>Failed Objects:</strong> No Failed Objects</p>`;
+            }
+        } else {
+            accordionBody.innerText = 'Failed to load data.';
+        }
+    }
+    
+    
+    async function fetchKeysIfVisible() {
+        const transferStatusHistoryPage = document.getElementById('transfer-status-history-page');
+        
+        // Check if the transfer-status-history-page is visible
+        if (window.getComputedStyle(transferStatusHistoryPage).display === 'block') {
+            await fetchKeys();
+        }
+    }
+    
+    fetchKeys();
+    
+    // Fetch keys every 10 seconds
+    setInterval(fetchKeysIfVisible, 10000);
+    
+    // Initial fetch when the page loads
+    window.onload = fetchKeysIfVisible;
+    
+    </script>
+    

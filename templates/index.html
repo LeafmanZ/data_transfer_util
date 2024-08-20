@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Panel</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.8.1/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Include the Pygments CSS file -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='pygments-solarized-dark.css') }}">
+    <!-- Include the FontAwesome CSS file -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Add YAML Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script> 
+    <style>
+        /*START - GLOBAL STYLES*/
+        html, body {
+            background-color: white;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        .btn {
+            color: white;
+            background: #4c6b75;
+            border:#ccc;
+        }
+
+        .btn:hover {
+            color: white;
+            background: #cae7eb;
+        }
+
+        .btn:active {
+            color: white;
+            background: #cae7eb;
+        }
+
+        .btn:active:focus {
+            color: white;
+            background: #cae7eb;
+            outline: none; /* Optional: removes the default outline */
+        }
+
+        .accordion-button:not(.collapsed) {
+            background-color: #cae7eb;
+        }
+
+        .accordion-button:focus {
+            --bs-accordion-btn-focus-box-shadow: 0 0 0 0.05rem rgba(76, 107, 117, 0.25);
+        }
+        /*END - GLOBAL STYLES*/
+
+/*START - LEFT PANE AKA DASHBOARD STYLES*/
+.left-pane {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 0; /* Remove any padding to ensure the top-bar stretches fully */
+}
+
+.top-bar {
+    display: flex;
+    flex-wrap: wrap; /* Allows buttons to wrap to the next line */
+    justify-content: space-between; /* Ensures buttons are spaced between the left and right */
+    align-items: center; /* Vertically centers the content */
+    padding: 10px 50px; /* Adjust padding as needed */
+    border-bottom: 1px solid #ccc;
+    border-right: 1px solid #ccc;
+    width: 100%; /* Ensure it spans the full width of the container */
+    box-sizing: border-box; /* Include padding and border in the element's width and height */
+}
+
+.left-buttons, .right-buttons {
+    display: flex;
+    flex-wrap: wrap; /* Allows buttons within these containers to wrap */
+    gap: 10px; /* Adds space between buttons */
+}
+
+.right-buttons {
+    margin-left: auto; /* Pushes the right buttons to the far right */
+}
+
+.pane {
+    flex: 1 1 auto; /* Pane will grow to take up remaining space */
+    overflow-y: auto;
+    padding: 0px 50px 25px 50px;
+    border-right: 1px solid #ccc;
+    width: 100%; /* Ensure it spans the full width of the container */
+    box-sizing: border-box; /* Ensure padding and borders are included within the element's width */
+}
+
+.active-topnav-button {
+    background-color: #cae7eb;
+    color: #4c6b75;
+}
+/*END - LEFT PANE AKA DASHBOARD STYLES*/
+
+
+        /*START - RIGHT PANE AKA LLM STYLES*/
+        .right-pane {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 0 0 10px 0;
+        }
+        .input-container-llm {
+            border-top: 1px solid #ccc;
+            padding: 10px;
+        }
+
+        .form-control:focus {
+            box-shadow: none;
+            outline: none;
+            border-color:#ccc;
+        }
+
+        .copy-text-btn {
+            background-color: transparent;
+            color: white;
+            text-decoration: none;
+        }
+
+        .prompt-item {
+            background: #4c6b75;
+            color: white;
+            padding: 10px;
+            margin: 0 10px 10px 50px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .response-item {
+            background: #cae7eb;
+            color: black;
+            padding: 10px;
+            margin-bottom: 10px;
+            margin: 0 50px 10px 10px;
+            border-radius: 5px;
+        }
+
+        .code-response-header {
+            background-color: #4c6b75;
+            border-radius: 10px 10px 0px 0px;
+            color: #ffffff;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .code-response-body {
+            background-color: #ebfdff;
+            border-radius: 0px 0px 10px 10px;
+        }
+        /*END - RIGHT PANE AKA LLM STYLES*/
+
+    </style>
+</head>
+<body>
+    <div class="container-fluid h-100">
+        <div class="row h-100">
+            <div class="col-8 left-pane" id="pane-container">
+                <!-- Top bar -->
+                <div class="top-bar">
+                    <div class="left-buttons">
+                        <button class="btn" type="button" id="home-menu">Overview</button>
+                        <button class="btn" type="button" id="network-status">Network</button>
+                        <button class="btn" type="button" id="transfer-status-history">Transfers</button>
+                        <button class="btn" type="button" id="transfer-statistics">Statistics</button>
+                        <button class="btn" type="button" id="transfer-configuration">Config</button>
+                    </div>
+                    <div class="right-buttons">
+                        <button class="btn" type="button" >Help</button>
+                        <button class="btn" type="button" >Contact</button>
+                    </div>
+                </div>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const buttons = document.querySelectorAll('.top-bar .left-buttons .btn');
+                        const panes = document.querySelectorAll('.pane');
+
+                        buttons.forEach(button => {
+                            button.addEventListener('click', function() {
+                                // Remove active class from all buttons
+                                buttons.forEach(btn => btn.classList.remove('active-topnav-button'));
+
+                                // Hide all panes
+                                panes.forEach(pane => pane.style.display = 'none');
+
+                                // Add active class to the clicked button
+                                this.classList.add('active-topnav-button');
+
+                                // Show the corresponding pane
+                                const paneId = this.id + '-page';
+                                document.getElementById(paneId).style.display = 'block';
+                            });
+                        });
+                    });
+                </script>
+
+                <!-- Content for the left pane -->
+                <div class="pane" id="home-menu-page" style="display: block;">
+                    {% include 'home-menu-page.html' %}
+                </div>
+                <div class="pane" id="transfer-configuration-page" style="display: none;">
+                    {% include 'transfer-configuration-page.html' %}
+                </div>
+                <div class="pane" id="network-status-page" style="display: none;">
+                    {% include 'network-status-page.html' %}
+                </div>
+                <div class="pane" id="transfer-statistics-page" style="display: none;">
+                    {% include 'transfer-statistics-page.html' %}
+                </div>
+                <div class="pane" id="transfer-status-history-page" style="display: none;">
+                    {% include 'transfer-status-history-page.html' %}
+                </div>
+            </div>
+            <div class="col-4 right-pane">
+                <!-- Content for the right pane -->
+                <div id="promptHistory" style="margin-top: 20px; padding-top: 10px; overflow-y: auto;">
+                    <!-- Prompt history will be displayed here -->
+                </div>
+                <div class="input-container-llm">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Type a question or command . . ." id="promptInput">
+                        <button class="btn" type="button" onclick="sendPrompt()">Send</button>
+                    </div>
+                    {% raw %}
+                    <script>
+                        document.getElementById('promptInput').addEventListener('keydown', function(event) {
+                            if (event.key === 'Enter') {
+                                sendPrompt();
+                            }
+                        });
+
+                        function sendPrompt() {
+                            const prompt = document.getElementById('promptInput').value;
+                            if (prompt.trim() === '') return;
+                            document.getElementById('promptInput').value = '';
+
+                            const promptHistory = document.getElementById('promptHistory');
+                            
+                            // Add the prompt to the history
+                            const newPromptDiv = document.createElement('div');
+                            newPromptDiv.classList.add('prompt-item');
+                            newPromptDiv.innerHTML = `${prompt}`;
+                            promptHistory.appendChild(newPromptDiv);
+
+                            // Placeholder for streamed response
+                            const responseDiv = document.createElement('div');
+                            responseDiv.classList.add('response-item');
+                            const responseId = `response-${Date.now()}`;
+                            responseDiv.innerHTML = `<span id="${responseId}"></span>`;
+                            promptHistory.appendChild(responseDiv);
+
+                            // Scroll to the bottom of the history
+                            promptHistory.scrollTop = promptHistory.scrollHeight;
+
+                            // Fetch the streaming response
+                            fetch('/streamResponse', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ prompt: prompt }),
+                            }).then(response => {
+                                const reader = response.body.getReader();
+                                const decoder = new TextDecoder();
+                                let text = '';
+
+                                function readStream() {
+                                    reader.read().then(({ done, value }) => {
+                                        if (done) return;
+                                        text += decoder.decode(value, { stream: true });
+                                        document.getElementById(responseId).innerHTML = text;
+                                        promptHistory.scrollTop = promptHistory.scrollHeight;
+                                        readStream();
+                                    });
+                                }
+                                readStream();
+                            }).catch((error) => {
+                                console.error('Error:', error);
+                            });
+
+                            // Send the prompt to activatePane route
+                            fetch('/activatePane', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ prompt: prompt }),
+                            }).then(response => response.json())
+                            .then(data => {
+                                // Hide all panes
+                                const panes = document.querySelectorAll('.pane');
+                                panes.forEach(pane => {
+                                    pane.style.display = 'none';
+                                });
+
+                                // Remove active class from all buttons
+                                const buttons = document.querySelectorAll('.top-bar .left-buttons .btn');
+                                buttons.forEach(btn => btn.classList.remove('active-topnav-button'));
+
+                                // Show the specific pane based on paneId
+                                if (data.paneId) {
+                                    const targetPane = document.getElementById(data.paneId);
+                                    if (targetPane) {
+                                        targetPane.style.display = 'block';
+
+                                        // Add active class to the corresponding button
+                                        const activeButton = document.querySelector(`.top-bar .left-buttons .btn[id="${data.paneId.replace('-page', '')}"]`);
+                                        if (activeButton) {
+                                            activeButton.classList.add('active-topnav-button');
+                                        }
+                                    } else {
+                                        console.error('Pane with the given ID not found:', data.paneId);
+                                    }
+                                }
+                            }).catch((error) => {
+                                console.error('Error activating pane:', error);
+                            });
+                        }
+
+                        function copyCodeText(elementId) {
+                            var codeDiv = document.getElementById("copy-text-" + elementId);
+                            var textArea = document.createElement("textarea");
+                            textArea.value = codeDiv.innerText;
+                            document.body.appendChild(textArea);
+                            textArea.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(textArea);
+
+                            // Get the button and change the icon and text
+                            var copyBtn = document.querySelector("#copy-text-btn-" + elementId);
+                            copyBtn.innerHTML = '<i class="bi bi-clipboard-check"></i> text copied';
+
+                            // Set a timeout to revert the icon and text after 5 seconds
+                            setTimeout(function() {
+                                copyBtn.innerHTML = '<i class="bi-clipboard"></i> copy text';
+                            }, 5000);
+                        }
+                    </script>
+                    {% endraw %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

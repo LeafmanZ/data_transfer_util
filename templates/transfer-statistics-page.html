@@ -1,0 +1,66 @@
+<div id="plotly-graph" style="width:100%;"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const transferStatisticsPage = document.getElementById('transfer-statistics-page');
+
+    // Function to check if the element is visible
+    const isElementVisible = (element) => {
+        return element.style.display === 'block';
+    };
+
+    // Function to fetch and display the plot
+    const fetchAndDisplayPlot = () => {
+        fetch('/generate-data-moved-graph')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();  // Parse JSON response
+            })
+            .then(data => {
+                // Clear the existing plot
+                const plotlyGraphContainer = document.getElementById('plotly-graph');
+                plotlyGraphContainer.innerHTML = '';
+
+                // Create a temporary container to hold the HTML snippet
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = data.plot;
+
+                // Append the content of the temporary container to the target container
+                plotlyGraphContainer.appendChild(tempDiv);
+
+                // Manually execute any scripts within the injected HTML
+                const scripts = tempDiv.querySelectorAll('script');
+                scripts.forEach(script => {
+                    const newScript = document.createElement('script');
+                    newScript.text = script.text;
+                    document.body.appendChild(newScript);  // Add script to the body to execute it
+                });
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
+            });
+    };
+
+    // Check if the page is already visible on load
+    if (isElementVisible(transferStatisticsPage)) {
+        fetchAndDisplayPlot();
+    }
+
+    // Optionally, listen for changes in the display property of the element
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach(mutation => {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                if (isElementVisible(transferStatisticsPage)) {
+                    fetchAndDisplayPlot();
+                }
+            }
+        });
+    });
+
+    observer.observe(transferStatisticsPage, { attributes: true });
+});
+
+
+</script>

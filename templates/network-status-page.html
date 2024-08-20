@@ -1,0 +1,142 @@
+<br><br>
+<div class="card">
+    <h5 class="card-header text-center">
+        Network Endpoint Status
+    </h5>
+    <div class="card-body network-endpoint-status">
+        <div class="row">
+            <div class="col">
+                <!-- Operational Status -->
+                <p id="src-operational-status" class="fw-bold">
+                    <!-- Status will be loaded here -->
+                </p>
+                <ul class="list-group" id="src-endpoints">
+                    <!-- Source endpoints will be loaded here -->
+                </ul>
+            </div>
+            <div class="col">
+                <!-- Operational Status -->
+                <p id="dst-operational-status" class="fw-bold">
+                    <!-- Status will be loaded here -->
+                </p>
+                <ul class="list-group" id="dst-endpoints">
+                    <!-- Destination endpoints will be loaded here -->
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer text-body-secondary text-center" id="last-updated">
+        <!-- Last updated time will be displayed here -->
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function getStatusColor(status) {
+        switch (status) {
+            case 'operational':
+                return 'text-success'; // Green dot
+            case 'degraded':
+                return 'text-warning'; // Orange dot
+            case 'critical':
+                return 'text-danger'; // Red dot
+            default:
+                return 'text-secondary'; // Gray dot
+        }
+    }
+
+    function loadNetworkStatus() {
+        fetch('/network-status')
+            .then(response => response.json())
+            .then(data => {
+                const status = data.status;
+                const lastUpdated = data.last_updated;
+
+                // Clear the current content
+                const srcEndpointsList = document.getElementById('src-endpoints');
+                const dstEndpointsList = document.getElementById('dst-endpoints');
+                const srcOperationalStatus = document.getElementById('src-operational-status');
+                const dstOperationalStatus = document.getElementById('dst-operational-status');
+                srcEndpointsList.innerHTML = '';
+                dstEndpointsList.innerHTML = '';
+
+                // Set operational status
+                srcOperationalStatus.innerHTML = `
+                    <div class="d-flex justify-content-between" style="padding-right:20px;">
+                        <span>Aggregate source endpoint status is ${status.src_endpoints_operational_status}</span>
+                        <span class="${getStatusColor(status.src_endpoints_operational_status)} ms-auto">&#x25CF;</span>
+                    </div>`;
+                dstOperationalStatus.innerHTML = `
+                    <div class="d-flex justify-content-between" style="padding-right:20px;">
+                        <span>Aggregate destination endpoint status is ${status.dst_endpoints_operational_status}</span>
+                        <span class="${getStatusColor(status.dst_endpoints_operational_status)} ms-auto">&#x25CF;</span>
+                    </div>`;
+
+                // Populate source endpoints
+                status.src_endpoint_urls_failed.forEach(url => {
+                    const li = document.createElement('li');
+                    li.classList.add('list-group-item');
+                    li.innerHTML = `
+                        <div class="d-flex justify-content-between">
+                            <span>${url}</span>
+                            <span class="text-danger ms-auto">&#x2717;</span>
+                        </div>`;
+                    srcEndpointsList.appendChild(li);
+                });
+
+                status.src_endpoint_urls_succeeded.forEach(url => {
+                    const li = document.createElement('li');
+                    li.classList.add('list-group-item');
+                    li.innerHTML = `
+                        <div class="d-flex justify-content-between">
+                            <span>${url}</span>
+                            <span class="text-success ms-auto">&#x2713;</span>
+                        </div>`;
+                    srcEndpointsList.appendChild(li);
+                });
+
+                // Populate destination endpoints
+                status.dst_endpoint_urls_failed.forEach(url => {
+                    const li = document.createElement('li');
+                    li.classList.add('list-group-item');
+                    li.innerHTML = `
+                        <div class="d-flex justify-content-between">
+                            <span>${url}</span>
+                            <span class="text-danger ms-auto">&#x2717;</span>
+                        </div>`;
+                    dstEndpointsList.appendChild(li);
+                });
+
+                status.dst_endpoint_urls_succeeded.forEach(url => {
+                    const li = document.createElement('li');
+                    li.classList.add('list-group-item');
+                    li.innerHTML = `
+                        <div class="d-flex justify-content-between">
+                            <span>${url}</span>
+                            <span class="text-success ms-auto">&#x2713;</span>
+                        </div>`;
+                    dstEndpointsList.appendChild(li);
+                });
+
+                // Update the last updated time
+                document.getElementById('last-updated').textContent = `${lastUpdated}`;
+            });
+    }
+
+    loadNetworkStatus();
+
+    // Load network status on page load if the page is visible
+    function checkAndLoadNetworkStatus() {
+        const networkStatusPage = document.getElementById('network-status-page');
+        if (window.getComputedStyle(networkStatusPage).display === 'block') {
+            loadNetworkStatus();
+        }
+    }
+
+    // Check the status on page load
+    checkAndLoadNetworkStatus();
+
+    // Optionally, refresh the status every 10 seconds only if the page is visible
+    setInterval(checkAndLoadNetworkStatus, 10000);
+});
+</script>

@@ -1,0 +1,1087 @@
+<style>
+    .transfer-configuration-page .list-group {
+        --bs-list-group-action-hover-bg: #cae7eb;
+        --bs-list-group-action-hover-color: black;
+    }
+
+    .transfer-configuration-page .list-group-item.active {
+        z-index: 2;
+        background-color: #4c6b75;
+        border-color: #4c6b75;
+    }
+
+    .transfer-configuration-page .bi-check-circle-fill {
+        color: green;
+    }
+</style>
+<br>
+<div class="row transfer-configuration-page">
+    <div class="col-3">
+        <h3>Saved Configs</h3>
+        <div class="list-group" id="config-list">
+            {% for config in config_files %}
+                <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" data-config="{{ config }}">
+                    <span class="flex-grow-1 text-truncate" style="max-width: calc(100% - 30px);">{{ config }}</span>
+                    <span class="delete-config" data-config="{{ config }}" style="cursor: pointer;">
+                        <i class="fa-solid fa-trash"></i>
+                    </span>
+                </button>
+            {% endfor %}
+        </div>
+        
+        <!-- <button class="btn mt-3" type="button" id="refresh-button">Refresh Config List</button> -->
+        
+        <script>
+            let existingConfigs = [];
+        
+            function loadConfigList() {
+                fetch('/api/configs')
+                    .then(response => response.json())
+                    .then(data => {
+                        existingConfigs = data.map(config => config.replace('.yaml', '')); // Remove the .yaml extension
+                        console.log(existingConfigs)
+                        const configList = document.getElementById('config-list');
+                        configList.innerHTML = '';
+                        data.forEach(function(config) {
+                            const configButton = document.createElement('button');
+                            configButton.type = 'button';
+                            configButton.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                            configButton.dataset.config = config;
+        
+                            const configNameSpan = document.createElement('span');
+                            configNameSpan.className = 'flex-grow-1 text-truncate';
+                            configNameSpan.style.maxWidth = 'calc(100% - 30px)';
+                            configNameSpan.textContent = config;
+        
+                            const deleteSpan = document.createElement('span');
+                            deleteSpan.className = 'delete-config';
+                            deleteSpan.style.cursor = 'pointer';
+                            deleteSpan.dataset.config = config;
+        
+                            // Add the Font Awesome trash icon
+                            const trashIcon = document.createElement('i');
+                            trashIcon.className = 'fa-solid fa-trash';
+        
+                            // Append the icon to the delete span
+                            deleteSpan.appendChild(trashIcon);
+        
+                            // Append spans to the button
+                            configButton.appendChild(configNameSpan);
+                            configButton.appendChild(deleteSpan);
+        
+                            // Append the button to the list
+                            configList.appendChild(configButton);
+                        });
+                    })
+                    .catch(error => console.error('Error fetching config list:', error));
+            }
+        
+            // Load the config list on page load
+            window.addEventListener('load', loadConfigList);
+        
+            document.getElementById('config-list').addEventListener('click', function(event) {
+                const targetButton = event.target.closest('button');
+
+                if (targetButton) {
+                    const configName = targetButton.dataset.config;
+
+                    if (event.target.closest('.delete-config')) {
+                        // Show a confirmation pop-up before deletion
+                        const isConfirmed = confirm(`Are you sure you want to delete the configuration "${configName}"?`);
+
+                        if (isConfirmed) {
+                            // Send a request to delete the config file
+                            fetch(`/delete_config?config_name=${encodeURIComponent(configName)}`, {
+                                method: 'DELETE'
+                            })
+                            .then(response => {
+                                if (response.ok) {
+                                    // Reload the config list after deletion
+                                    loadConfigList();
+                                } else {
+                                    console.error('Failed to delete config:', configName);
+                                }
+                            })
+                            .catch(error => console.error('Error deleting config:', error));
+                        } else {
+                            console.log('Deletion canceled for config:', configName);
+                        }
+                    } else {
+                        // Remove 'active' class from all buttons
+                        document.querySelectorAll('#config-list .list-group-item').forEach(function(button) {
+                            button.classList.remove('active');
+                        });
+
+                        // Add 'active' class to the clicked button
+                        targetButton.classList.add('active');
+
+                        // Fetch the configuration details for the selected config name
+                        fetch(`/load_config?config_name=${encodeURIComponent(configName)}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                // Populate Source Information
+                                document.getElementById('srcService').value = data.src.service;
+                                document.getElementById('srcBucket').value = data.src.bucket;
+                                document.getElementById('srcBucketPrefix').value = data.src.bucket_prefix;
+                                document.getElementById('srcRegion').value = data.src.region;
+                                document.getElementById('srcAccessKey').value = data.src.access_key;
+                                document.getElementById('srcSecretAccessKey').value = data.src.secret_access_key;
+                                document.getElementById('srcEndpointUrls').value = data.src.endpoint_urls.join(', ');
+
+                                // Populate Destination Information
+                                document.getElementById('dstService').value = data.dst.service;
+                                document.getElementById('dstBucket').value = data.dst.bucket;
+                                document.getElementById('dstBucketPrefix').value = data.dst.bucket_prefix;
+                                document.getElementById('dstRegion').value = data.dst.region;
+                                document.getElementById('dstAccessKey').value = data.dst.access_key;
+                                document.getElementById('dstSecretAccessKey').value = data.dst.secret_access_key;
+                                document.getElementById('dstEndpointUrls').value = data.dst.endpoint_urls.join(', ');
+
+                                // Populate Log Information
+                                document.getElementById('logService').value = data.log.service;
+                                document.getElementById('logBucket').value = data.log.bucket;
+                                document.getElementById('logBucketPrefix').value = data.log.bucket_prefix;
+                                document.getElementById('logRegion').value = data.log.region;
+                                document.getElementById('logAccessKey').value = data.log.access_key;
+                                document.getElementById('logSecretAccessKey').value = data.log.secret_access_key;
+                                document.getElementById('logEndpointUrls').value = data.log.endpoint_urls.join(', ');
+                                document.getElementById('logLocalDirectory').value = data.log.local_directory;
+                            })
+                            .catch(error => console.error('Error loading config:', error));
+                    }
+                }
+            });
+        </script>
+        
+    </div>
+    <div class="col-9">
+        <h3>Config Form</h3>
+        <div class="accordion" id="accordionExample">
+            <!-- Source Information -->
+            <div class="accordion-item">
+                <h4 class="accordion-header" id="headingSource">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSource" aria-expanded="true" aria-controls="collapseSource">
+                        Source Information
+                    </button>
+                </h4>
+                <div id="collapseSource" class="accordion-collapse collapse show" aria-labelledby="headingSource">
+                    <div class="accordion-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="srcService" class="form-label">Service</label>
+                                    <input type="text" class="form-control" id="srcService" name="srcService" placeholder="AWS or AZURE" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="srcBucket" class="form-label">Bucket/Container Name</label>
+                                    <input type="text" class="form-control" id="srcBucket" name="srcBucket" placeholder="bucket-name or container-name" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="srcBucketPrefix" class="form-label">Bucket/Container Prefix</label>
+                                    <input type="text" class="form-control" id="srcBucketPrefix" name="srcBucketPrefix" placeholder="prefix or container-subdirectory">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="srcRegion" class="form-label">Region</label>
+                                    <input type="text" class="form-control" id="srcRegion" name="srcRegion" placeholder="aws region or empty for azure" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="srcAccessKey" class="form-label">Access Key</label>
+                                    <input type="text" class="form-control" id="srcAccessKey" name="srcAccessKey" placeholder="aws-access-key or azure-connection_string" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="srcSecretAccessKey" class="form-label">Secret Access Key</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="srcSecretAccessKey" name="srcSecretAccessKey" placeholder="aws-secret-access-key or empty for azure" required>
+                                        <span class="input-group-text">
+                                            <i class="bi bi-eye-slash" id="toggleSrcPassword" style="cursor: pointer;"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="srcEndpointUrls" class="form-label">Endpoint URLs</label>
+                                    <input type="text" class="form-control" id="srcEndpointUrls" name="srcEndpointUrls" placeholder="e.g., 'https://1.1.1.1, https://1.1.1.2, https://1.1.1.3' or 'no_endpoint'" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Destination Information -->
+            <div class="accordion-item">
+                <h4 class="accordion-header" id="headingDestination">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDestination" aria-expanded="false" aria-controls="collapseDestination">
+                        Destination Information
+                    </button>
+                </h4>
+                <div id="collapseDestination" class="accordion-collapse collapse" aria-labelledby="headingDestination">
+                    <div class="accordion-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="dstService" class="form-label">Service</label>
+                                    <input type="text" class="form-control" id="dstService" name="dstService" placeholder="AWS or AZURE" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="dstBucket" class="form-label">Bucket/Container Name</label>
+                                    <input type="text" class="form-control" id="dstBucket" name="dstBucket" placeholder="bucket-name or container-name" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="dstBucketPrefix" class="form-label">Bucket/Container Prefix</label>
+                                    <input type="text" class="form-control" id="dstBucketPrefix" name="dstBucketPrefix" placeholder="prefix or container-subdirectory">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="dstRegion" class="form-label">Region</label>
+                                    <input type="text" class="form-control" id="dstRegion" name="dstRegion" placeholder="aws region or empty for azure" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="dstAccessKey" class="form-label">Access Key</label>
+                                    <input type="text" class="form-control" id="dstAccessKey" name="dstAccessKey" placeholder="aws-access-key or azure-connection_string" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="dstSecretAccessKey" class="form-label">Secret Access Key</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="dstSecretAccessKey" name="dstSecretAccessKey" placeholder="aws-secret-access-key or empty for azure" required>
+                                        <span class="input-group-text">
+                                            <i class="bi bi-eye-slash" id="toggleDstPassword" style="cursor: pointer;"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="dstEndpointUrls" class="form-label">Endpoint URLs</label>
+                                    <input type="text" class="form-control" id="dstEndpointUrls" name="dstEndpointUrls" placeholder="e.g., 'https://1.1.1.1, https://1.1.1.2, https://1.1.1.3' or 'no_endpoint'" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                    
+                </div>
+            </div>
+
+            <!-- Log Information -->
+            <div class="accordion-item">
+                <h4 class="accordion-header" id="headingLog">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseLog" aria-expanded="false" aria-controls="collapseLog">
+                        Log Information
+                    </button>
+                </h4>
+                <div id="collapseLog" class="accordion-collapse collapse" aria-labelledby="headingLog">
+                    <div class="accordion-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="logService" class="form-label">Service</label>
+                                    <input type="text" class="form-control" id="logService" name="logService" placeholder="AWS" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="logBucket" class="form-label">Bucket Name</label>
+                                    <input type="text" class="form-control" id="logBucket" name="logBucket" placeholder="logging-bucket-name" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="logBucketPrefix" class="form-label">Bucket Prefix</label>
+                                    <input type="text" class="form-control" id="logBucketPrefix" name="logBucketPrefix" placeholder="logging-prefix" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="logRegion" class="form-label">Region</label>
+                                    <input type="text" class="form-control" id="logRegion" name="logRegion" placeholder="us-east-1" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="logAccessKey" class="form-label">Access Key</label>
+                                    <input type="text" class="form-control" id="logAccessKey" name="logAccessKey" placeholder="access-key" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="logSecretAccessKey" class="form-label">Secret Access Key</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="logSecretAccessKey" name="logSecretAccessKey" placeholder="secret-access-key" required>
+                                        <span class="input-group-text">
+                                            <i class="bi bi-eye-slash" id="toggleLogPassword" style="cursor: pointer;"></i>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="logEndpointUrls" class="form-label">Endpoint URLs</label>
+                                    <input type="text" class="form-control" id="logEndpointUrls" name="logEndpointUrls" placeholder="no_endpoint" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="logLocalDirectory" class="form-label">Local Directory</label>
+                                    <input type="text" class="form-control" id="logLocalDirectory" name="logLocalDirectory" placeholder="logs" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                    
+                </div>
+            </div>
+            <script>
+                document.getElementById('toggleSrcPassword').addEventListener('click', function () {
+                    togglePasswordVisibility('srcSecretAccessKey', this);
+                });
+
+                document.getElementById('toggleDstPassword').addEventListener('click', function () {
+                    togglePasswordVisibility('dstSecretAccessKey', this);
+                });
+
+                document.getElementById('toggleLogPassword').addEventListener('click', function () {
+                    togglePasswordVisibility('logSecretAccessKey', this);
+                });
+
+                function togglePasswordVisibility(inputId, toggleIcon) {
+                    const input = document.getElementById(inputId);
+                    if (input.type === "password") {
+                        input.type = "text";
+                        toggleIcon.classList.remove('bi-eye-slash');
+                        toggleIcon.classList.add('bi-eye');
+                    } else {
+                        input.type = "password";
+                        toggleIcon.classList.remove('bi-eye');
+                        toggleIcon.classList.add('bi-eye-slash');
+                    }
+                }
+                document.addEventListener("DOMContentLoaded", function () {
+                // Define source input elements
+                const srcServiceInput = document.getElementById("srcService");
+                const srcBucketInput = document.getElementById("srcBucket");
+                const srcPrefixInput = document.getElementById("srcBucketPrefix");
+                const srcRegionInput = document.getElementById("srcRegion");
+                const srcAccessKeyInput = document.getElementById("srcAccessKey");
+                const srcSecretAccessKeyInput = document.getElementById("srcSecretAccessKey");
+                const srcEndpointUrlsInput = document.getElementById("srcEndpointUrls");
+
+                // Define destination input elements
+                const dstServiceInput = document.getElementById("dstService");
+                const dstBucketInput = document.getElementById("dstBucket");
+                const dstPrefixInput = document.getElementById("dstBucketPrefix");
+                const dstRegionInput = document.getElementById("dstRegion");
+                const dstAccessKeyInput = document.getElementById("dstAccessKey");
+                const dstSecretAccessKeyInput = document.getElementById("dstSecretAccessKey");
+                const dstEndpointUrlsInput = document.getElementById("dstEndpointUrls");
+
+                // Define log input elements
+                const logServiceInput = document.getElementById("logService");
+                const logBucketInput = document.getElementById("logBucket");
+                const logPrefixInput = document.getElementById("logBucketPrefix");
+                const logRegionInput = document.getElementById("logRegion");
+                const logAccessKeyInput = document.getElementById("logAccessKey");
+                const logSecretAccessKeyInput = document.getElementById("logSecretAccessKey");
+                const logEndpointUrlsInput = document.getElementById("logEndpointUrls");
+                const logLocalDirectoryInput = document.getElementById("logLocalDirectory");
+
+                // Apply validation to source elements
+                applyValidation(srcServiceInput, srcBucketInput, srcPrefixInput, srcRegionInput, srcAccessKeyInput, srcSecretAccessKeyInput, srcEndpointUrlsInput, null);
+
+                // Apply validation to destination elements
+                applyValidation(dstServiceInput, dstBucketInput, dstPrefixInput, dstRegionInput, dstAccessKeyInput, dstSecretAccessKeyInput, dstEndpointUrlsInput, null);
+
+                // Apply validation to log elements, including logLocalDirectoryInput
+                applyValidation(logServiceInput, logBucketInput, logPrefixInput, logRegionInput, logAccessKeyInput, logSecretAccessKeyInput, logEndpointUrlsInput, logLocalDirectoryInput);
+
+                // Function to apply validation rules
+                function applyValidation(serviceInput, bucketInput, prefixInput, regionInput, accessKeyInput, secretAccessKeyInput, endpointUrlsInput, localDirectoryInput) {
+                    // Validate Service
+                    serviceInput.addEventListener("input", function () {
+                        const service = serviceInput.value.trim().toUpperCase();
+                        if (service !== "AWS" && service !== "AZURE") {
+                            serviceInput.setCustomValidity("Service must be 'AWS' or 'AZURE'");
+                        } else {
+                            serviceInput.setCustomValidity("");
+                        }
+                    });
+
+                    // Validate Bucket Name
+                    bucketInput.addEventListener("input", function () {
+                        const bucketName = bucketInput.value.trim();
+                        const bucketRegex = /^[a-z0-9]([a-z0-9-]{1,61}[a-z0-9])?$/;
+                        if (!bucketRegex.test(bucketName) || bucketName.length < 3 || bucketName.length > 63) {
+                            bucketInput.setCustomValidity("Invalid bucket name. Follow the naming rules.");
+                        } else {
+                            bucketInput.setCustomValidity("");
+                        }
+                    });
+
+                    prefixInput.addEventListener("input", function () {
+                        const prefix = prefixInput.value.trim();
+
+                        // Updated regex to allow forward slash, underscore, empty input, and ending with a single slash, and capital letters
+                        const prefixRegex = /^(?:[A-Za-z0-9][-A-Za-z0-9._/]*[A-Za-z0-9_/])?$/;
+
+                        // If input is empty or matches the regex, it's valid
+                        if (prefix === "" || prefixRegex.test(prefix)) {
+                            prefixInput.setCustomValidity("");
+                        } else {
+                            prefixInput.setCustomValidity("Invalid prefix. Follow the naming rules.");
+                        }
+                    });
+
+                    // Validate Region
+                    regionInput.addEventListener("input", function () {
+                        const region = regionInput.value.trim();
+                        if (region.length >= 25 || !/^[a-z0-9-]+$/.test(region)) {
+                            regionInput.setCustomValidity("lowercase, <25 chars, '-' & numbers allowed");
+                        } else {
+                            regionInput.setCustomValidity("");
+                        }
+                    });
+
+                    // Validate Access Key
+                    accessKeyInput.addEventListener("input", function () {
+                        const accessKey = accessKeyInput.value.trim();
+                        if (accessKey.length > 300) {
+                            accessKeyInput.setCustomValidity("Access key cannot exceed 300 characters.");
+                        } else {
+                            accessKeyInput.setCustomValidity("");
+                        }
+                    });
+
+                    // Validate Secret Access Key
+                    secretAccessKeyInput.addEventListener("input", function () {
+                        const secretAccessKey = secretAccessKeyInput.value.trim();
+                        if (secretAccessKey.length > 100) {
+                            secretAccessKeyInput.setCustomValidity("Secret access key cannot exceed 100 characters.");
+                        } else {
+                            secretAccessKeyInput.setCustomValidity("");
+                        }
+                    });
+
+                    // Validate Endpoint URLs
+                    endpointUrlsInput.addEventListener("input", function () {
+                        const endpointUrls = endpointUrlsInput.value.trim();
+                        const endpoints = endpointUrls.split(",").map(url => url.trim());
+                        const endpointRegex = /^(no_endpoint|https?:\/\/(?:\d{1,3}\.){3}\d{1,3})$/;
+
+                        if (!endpoints.every(url => endpointRegex.test(url))) {
+                            endpointUrlsInput.setCustomValidity("Invalid endpoint URLs. Must be 'no_endpoint' or valid IP addresses with 'http://' or 'https://'.");
+                        } else {
+                            endpointUrlsInput.setCustomValidity("");
+                        }
+                    });
+
+                    // Validate Local Directory
+                    if (localDirectoryInput) {
+                        localDirectoryInput.addEventListener("input", function () {
+                            const localDirectory = localDirectoryInput.value.trim();
+                            if (localDirectory.length === 0 || !/^[a-zA-Z0-9/_-]+$/.test(localDirectory)) {
+                                localDirectoryInput.setCustomValidity("Invalid local directory. Allowed characters: letters, numbers, '/', '_', '-'");
+                            } else {
+                                localDirectoryInput.setCustomValidity("");
+                            }
+                        });
+                    }
+                }
+
+                document.getElementById("initiate-sync").addEventListener("click", function () {
+                    // Disable the confirm button initially
+                    const confirmButton = document.getElementById("confirmButton");
+                    confirmButton.disabled = true;
+                    confirmButton.innerHTML = '<i class="fa-solid fa-lock"></i> Confirm';
+                    
+                    // Hide or remove the lists (key containers)
+                    const srcKeysContainer = document.getElementById("srcSpinnerContainer").querySelector("#srcKeysContainer");
+                    const dstKeysContainer = document.getElementById("dstSpinnerContainer").querySelector("#dstKeysContainer");
+                    const logKeysContainer = document.getElementById("logSpinnerContainer").querySelector("#logKeysContainer");
+
+                    srcKeysContainer.innerHTML = ''; // Clear the src keys container
+                    dstKeysContainer.innerHTML = ''; // Clear the dst keys container
+                    logKeysContainer.innerHTML = ''; // Clear the log keys container
+
+                    // Trigger validation for all input elements
+                    const allInputs = [
+                        srcServiceInput, srcBucketInput, srcPrefixInput, srcRegionInput, srcAccessKeyInput, srcSecretAccessKeyInput, srcEndpointUrlsInput,
+                        dstServiceInput, dstBucketInput, dstPrefixInput, dstRegionInput, dstAccessKeyInput, dstSecretAccessKeyInput, dstEndpointUrlsInput,
+                        logServiceInput, logBucketInput, logPrefixInput, logRegionInput, logAccessKeyInput, logSecretAccessKeyInput, logEndpointUrlsInput,
+                        logLocalDirectoryInput
+                    ];
+
+                    let allValid = true;
+
+                    // Check validity of each input
+                    allInputs.forEach(input => {
+                        if (!input.reportValidity()) {
+                            allValid = false;
+                        }
+                    });
+
+                    if (allValid) {
+                        // If all inputs are valid, open the sync confirmation modal
+                        console.log("All inputs are valid. Proceeding with sync operation.");
+
+                        // Reference the Bootstrap modal by its ID
+                        const modal = new bootstrap.Modal(document.getElementById('syncConfirmationModal'));
+                        modal.show();
+
+                        // Show spinners while waiting for validation
+                        showSpinners();
+
+                        // Prepare data to send to the back-end
+                        const data = {
+                            src: {
+                                service: srcServiceInput.value,
+                                bucket: srcBucketInput.value,
+                                bucket_prefix: srcPrefixInput.value,
+                                region: srcRegionInput.value,
+                                access_key: srcAccessKeyInput.value,
+                                secret_access_key: srcSecretAccessKeyInput.value,
+                                endpoint_urls: srcEndpointUrlsInput.value.split(',').map(url => url.trim())
+                            },
+                            dst: {
+                                service: dstServiceInput.value,
+                                bucket: dstBucketInput.value,
+                                bucket_prefix: dstPrefixInput.value,
+                                region: dstRegionInput.value,
+                                access_key: dstAccessKeyInput.value,
+                                secret_access_key: dstSecretAccessKeyInput.value,
+                                endpoint_urls: dstEndpointUrlsInput.value.split(',').map(url => url.trim())
+                            },
+                            log: {
+                                service: logServiceInput.value,
+                                bucket: logBucketInput.value,
+                                bucket_prefix: logPrefixInput.value,
+                                region: logRegionInput.value,
+                                access_key: logAccessKeyInput.value,
+                                secret_access_key: logSecretAccessKeyInput.value,
+                                endpoint_urls: logEndpointUrlsInput.value.split(',').map(url => url.trim()),
+                                local_directory: logLocalDirectoryInput.value
+                            }
+                        };
+
+                        // Modify the fetch call to include validationKeys in the response
+                        fetch('/validate-data-sources', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(data)
+                        })
+                        .then(response => response.json())
+                        .then(result => {
+                            if (result.status === "success") {
+                                updateSpinners(result.validation_results, result.validation_keys);
+                                updateConfirmButton(result.validation_results);
+                            } else {
+                                console.error("Validation failed:", result);
+                            }
+                        })
+                        .catch(error => console.error('Error:', error));
+                    } else {
+                        console.log("Some inputs are invalid. Please correct the errors and try again.");
+                    }
+                });
+
+                function showSpinners() {
+                    const srcSpinner = document.getElementById("srcSpinner");
+                    const dstSpinner = document.getElementById("dstSpinner");
+                    const logSpinner = document.getElementById("logSpinner");
+
+                    // Reset the spinner elements by removing validation result classes and clearing the innerHTML
+                    [srcSpinner, dstSpinner, logSpinner].forEach(spinner => {
+                        spinner.className = "spinner-border spinner-border-sm text-info me-2";
+                        spinner.innerHTML = ''; // Clear any existing icons or text
+                    });
+                }
+
+                function updateSpinners(validationResults, validationKeys) {
+                    const srcSpinner = document.getElementById("srcSpinner");
+                    const dstSpinner = document.getElementById("dstSpinner");
+                    const logSpinner = document.getElementById("logSpinner");
+
+                    function updateSpinnerAndKeys(spinner, spinnerContainerId, validationResult, validationKeyArray) {
+                        spinner.classList.remove('spinner-border', 'spinner-grow');
+                        spinner.classList.add(validationResult ? 'text-success' : 'text-danger');
+                        spinner.innerHTML = validationResult 
+                            ? '<i class="bi bi-check-circle-fill"></i>' 
+                            : '<i class="bi bi-x-circle-fill"></i>';
+
+                        // Remove any existing key lists to avoid duplication
+                        const keysContainer = document.getElementById(spinnerContainerId).querySelector(`#${spinnerContainerId.replace('SpinnerContainer', 'KeysContainer')}`);
+                        keysContainer.innerHTML = ''; // Clear the container
+
+                        // Display keys for the corresponding spinner regardless of validation result
+                        if (validationKeyArray.length > 0) {
+                            let keysHtml = 'Preview of some of the objects in the directory or bucket<br><ul class="list-group mt-2">'; // Add margin-top to separate from the previous content
+                            validationKeyArray.forEach(key => {
+                                keysHtml += `<li class="list-group-item">${key}</li>`;
+                            });
+                            keysHtml += '</ul>';
+                            keysContainer.innerHTML = keysHtml; // Insert the keys into the new container
+                        }
+                    }
+
+                    // Check if the src validation result should be false
+                    if (validationKeys.src.length === 1 && validationKeys.src[0] === 'No objects are inside this directory') {
+                        validationResults.src = false;
+                    }
+
+                    // Update each spinner and handle their respective keys
+                    updateSpinnerAndKeys(srcSpinner, "srcSpinnerContainer", validationResults.src, validationKeys.src);
+                    updateSpinnerAndKeys(dstSpinner, "dstSpinnerContainer", validationResults.dst, validationKeys.dst);
+                    updateSpinnerAndKeys(logSpinner, "logSpinnerContainer", validationResults.log, validationKeys.log);
+                }
+
+                function updateConfirmButton(validationResults) {
+                    const confirmButton = document.getElementById("confirmButton");
+
+                    // Check if all validation results are true
+                    const allValid = validationResults.src && validationResults.dst && validationResults.log;
+
+                    if (allValid) {
+                        confirmButton.disabled = false;
+                        confirmButton.innerHTML = '<i class="fa-solid fa-unlock"></i> Confirm';
+                    } else {
+                        confirmButton.disabled = true;
+                        confirmButton.innerHTML = '<i class="fa-solid fa-lock"></i> Confirm';
+                    }
+                }
+                document.getElementById('confirmButton').addEventListener('click', function(event) {
+                    event.preventDefault(); // Prevent default form submission behavior
+
+                    // Gather form data
+                    const src = {
+                        service: document.getElementById('srcService').value,
+                        bucket: document.getElementById('srcBucket').value,
+                        bucket_prefix: document.getElementById('srcBucketPrefix').value,
+                        region: document.getElementById('srcRegion').value,
+                        access_key: document.getElementById('srcAccessKey').value,
+                        secret_access_key: document.getElementById('srcSecretAccessKey').value,
+                        endpoint_urls: document.getElementById('srcEndpointUrls').value.split(',').map(url => url.trim())
+                    };
+
+                    const dst = {
+                        service: document.getElementById('dstService').value,
+                        bucket: document.getElementById('dstBucket').value,
+                        bucket_prefix: document.getElementById('dstBucketPrefix').value,
+                        region: document.getElementById('dstRegion').value,
+                        access_key: document.getElementById('dstAccessKey').value,
+                        secret_access_key: document.getElementById('dstSecretAccessKey').value,
+                        endpoint_urls: document.getElementById('dstEndpointUrls').value.split(',').map(url => url.trim())
+                    };
+
+                    const log = {
+                        service: document.getElementById('logService').value,
+                        bucket: document.getElementById('logBucket').value,
+                        bucket_prefix: document.getElementById('logBucketPrefix').value,
+                        region: document.getElementById('logRegion').value,
+                        access_key: document.getElementById('logAccessKey').value,
+                        secret_access_key: document.getElementById('logSecretAccessKey').value,
+                        endpoint_urls: document.getElementById('logEndpointUrls').value.split(',').map(url => url.trim()),
+                        local_directory: document.getElementById('logLocalDirectory').value
+                    };
+
+                    const configData = { src, dst, log };
+
+                    fetch('/confirm_data', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(configData)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Success:', data);
+                        alert(data.message);  // Display the message returned from the server
+                    })
+                    .catch((error) => {
+                        console.error('Error:', error);
+                        alert('An error occurred. Please try again.');  // Alert in case of an error
+                    });
+                });
+            });
+            </script>
+        </div>
+        <div class="d-flex justify-content-between">
+            <div>
+                <button type="button" class="btn mt-3" data-bs-toggle="modal" data-bs-target="#saveTransferConfigModal"  onclick="validateConfigName(document.getElementById('configName'))">
+                    <i class="fa-solid fa-save"></i> Save
+                </button>
+                <div class="modal fade" id="saveTransferConfigModal" tabindex="-1" aria-labelledby="saveTransferConfigModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="saveTransferConfigModalLabel">Save Transfer Config</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                Are you sure you want to save this transfer configuration?
+                                <div class="mb-3 mt-3">
+                                    <label for="configName" class="form-label">Configuration Name</label>
+                                    <input type="text" class="form-control" id="configName" placeholder="MyConfigurationName" 
+                                            oninput="validateConfigName(this)">
+                                    <div id="configNameFeedback" class="invalid-feedback"></div>
+                                </div>
+                                <script>
+                                    function validateConfigName(input) {
+                                        const regex = /^[a-zA-Z0-9]+$/;  // Only letters and numbers
+                                        const feedback = document.getElementById('configNameFeedback');
+                                        const configName = input.value;
+                                        const saveButton = document.getElementById('save-button');
+                
+                                        if (!regex.test(configName)) {
+                                            input.classList.add('is-invalid');
+                                            feedback.textContent = "Configuration name can only contain letters and numbers.";
+                                            saveButton.disabled = true;
+                                        } else if (configName.length > 15) {
+                                            input.classList.add('is-invalid');
+                                            feedback.textContent = "Configuration name cannot be more than 15 characters.";
+                                            saveButton.disabled = true;
+                                        } else if (existingConfigs.includes(configName)) {
+                                            input.classList.add('is-invalid');
+                                            feedback.textContent = "Configuration name already exists.";
+                                            saveButton.disabled = true;
+                                        } else {
+                                            input.classList.remove('is-invalid');
+                                            feedback.textContent = "";
+                                            saveButton.disabled = false;
+                                        }
+                                    }
+                
+                                    document.getElementById('configName').addEventListener('keydown', function(event) {
+                                        const modal = document.getElementById('saveTransferConfigModal');
+                                        const isModalOpen = modal.classList.contains('show');  // Bootstrap adds 'show' class when modal is open
+                                        if (isModalOpen && event.key === 'Enter') {
+                                            event.preventDefault();  // Prevent default Enter behavior
+                                            document.getElementById('save-button').click();  // Trigger the save button click
+                                        }
+                                    });
+                                </script>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn mt-3" data-bs-dismiss="modal" id="save-button"><i class="fa-solid fa-save"></i> Save</button>
+                                <button type="button" class="btn mt-3" data-bs-dismiss="modal">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="button" class="btn mt-3" id="download-button"><i class="fa-solid fa-download"></i> Download</button>
+                <!-- Button to Open Modal -->
+                <button type="button" class="btn mt-3" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                    <i class="fa-solid fa-upload"></i> Upload
+                </button>
+
+                <!-- Modal Structure -->
+                <div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="uploadModalLabel">Upload YAML Configuration</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="file" id="yamlUploadInput" accept=".yaml" />
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="uploadYamlButton">Upload</button>
+                    </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn mt-3" id="initiate-sync"><i class="fa-solid fa-rotate"></i> Initiate Sync</button>
+            <!-- Sync Confirmation Modal -->
+            <div class="modal fade" id="syncConfirmationModal" tabindex="-1" aria-labelledby="syncConfirmationModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="syncConfirmationModalLabel">Confirm Sync Operation</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            Are you sure you want to proceed with the sync operation?
+                            <br><br>
+                            <div class="list-group">
+                                <div id="srcSpinnerContainer" class="list-group-item border-0 p-0 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <div id="srcSpinner" class="spinner-border spinner-border-sm text-info me-2" role="status"></div>
+                                        <strong>Source Connection Status</strong>
+                                    </div>
+                                    <!-- Nested div for the keys list -->
+                                    <div id="srcKeysContainer" class="mt-2"></div>
+                                </div>
+                                <div id="dstSpinnerContainer" class="list-group-item border-0 p-0 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <div id="dstSpinner" class="spinner-border spinner-border-sm text-info me-2" role="status"></div>
+                                        <strong>Destination Connection Status</strong>
+                                    </div>
+                                    <!-- Nested div for the keys list -->
+                                    <div id="dstKeysContainer" class="mt-2"></div>
+                                </div>
+                                <div id="logSpinnerContainer" class="list-group-item border-0 p-0 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <div id="logSpinner" class="spinner-border spinner-border-sm text-info me-2" role="status"></div>
+                                        <strong>Logs Connection Status</strong>
+                                    </div>
+                                    <!-- Nested div for the keys list -->
+                                    <div id="logKeysContainer" class="mt-2"></div>
+                                </div>
+                            </div>
+                            <br>
+                            You can only proceed with the sync operation once all locations are confirmed as valid, as indicated by: <i class="bi bi-check-circle-fill"></i>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn" data-bs-dismiss="modal" id="confirmButton" disabled>
+                                <i class="fa-solid fa-lock"></i> Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>            
+              
+            <!-- <button type="submit" class="btn mt-3">Continue <i class="fa-solid fa-forward"></i></button> -->
+
+            <script>
+                document.getElementById('uploadYamlButton').addEventListener('click', function() {
+                    const fileInput = document.getElementById('yamlUploadInput');
+                    const file = fileInput.files[0];
+                    
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            try {
+                                const yamlData = jsyaml.load(event.target.result);
+                                if (validateYaml(yamlData)) {
+                                    populateFields(yamlData);
+                                    // Close the modal if the upload is successful
+                                    const modal = bootstrap.Modal.getInstance(document.getElementById('uploadModal'));
+                                    modal.hide();
+                                } else {
+                                    alert('Invalid YAML structure.');
+                                }
+                            } catch (e) {
+                                alert('Error parsing YAML file.');
+                            }
+                        };
+                        reader.readAsText(file);
+                    } else {
+                        alert('Please select a YAML file.');
+                    }
+                });
+
+                function validateYaml(yamlData) {
+                    return yamlData && yamlData.src && yamlData.dst && yamlData.log &&
+                        yamlData.src.service && yamlData.src.bucket && yamlData.src.region &&
+                        yamlData.dst.service && yamlData.dst.bucket && yamlData.dst.region &&
+                        yamlData.log.service && yamlData.log.bucket && yamlData.log.region;
+                }
+
+                function populateFields(yamlData) {
+                    document.getElementById('srcService').value = yamlData.src.service;
+                    document.getElementById('srcBucket').value = yamlData.src.bucket;
+                    document.getElementById('srcBucketPrefix').value = yamlData.src.bucket_prefix;
+                    document.getElementById('srcRegion').value = yamlData.src.region;
+                    document.getElementById('srcAccessKey').value = yamlData.src.access_key;
+                    document.getElementById('srcSecretAccessKey').value = yamlData.src.secret_access_key;
+                    document.getElementById('srcEndpointUrls').value = yamlData.src.endpoint_urls.join(', ');
+
+                    document.getElementById('dstService').value = yamlData.dst.service;
+                    document.getElementById('dstBucket').value = yamlData.dst.bucket;
+                    document.getElementById('dstBucketPrefix').value = yamlData.dst.bucket_prefix;
+                    document.getElementById('dstRegion').value = yamlData.dst.region;
+                    document.getElementById('dstAccessKey').value = yamlData.dst.access_key;
+                    document.getElementById('dstSecretAccessKey').value = yamlData.dst.secret_access_key;
+                    document.getElementById('dstEndpointUrls').value = yamlData.dst.endpoint_urls.join(', ');
+
+                    document.getElementById('logService').value = yamlData.log.service;
+                    document.getElementById('logBucket').value = yamlData.log.bucket;
+                    document.getElementById('logBucketPrefix').value = yamlData.log.bucket_prefix;
+                    document.getElementById('logRegion').value = yamlData.log.region;
+                    document.getElementById('logAccessKey').value = yamlData.log.access_key;
+                    document.getElementById('logSecretAccessKey').value = yamlData.log.secret_access_key;
+                    document.getElementById('logEndpointUrls').value = yamlData.log.endpoint_urls.join(', ');
+                    document.getElementById('logLocalDirectory').value = yamlData.log.local_directory;
+                }
+
+                document.getElementById('save-button').addEventListener('click', function(event) {
+                    // Gather form data
+                    const configName = document.getElementById('configName').value;
+                    document.getElementById('configName').value = '';
+
+                    const src = {
+                        service: document.getElementById('srcService').value,
+                        bucket: document.getElementById('srcBucket').value,
+                        bucket_prefix: document.getElementById('srcBucketPrefix').value,
+                        region: document.getElementById('srcRegion').value,
+                        access_key: document.getElementById('srcAccessKey').value,
+                        secret_access_key: document.getElementById('srcSecretAccessKey').value,
+                        endpoint_urls: document.getElementById('srcEndpointUrls').value.split(',').map(url => url.trim())
+                    };
+
+                    const dst = {
+                        service: document.getElementById('dstService').value,
+                        bucket: document.getElementById('dstBucket').value,
+                        bucket_prefix: document.getElementById('dstBucketPrefix').value,
+                        region: document.getElementById('dstRegion').value,
+                        access_key: document.getElementById('dstAccessKey').value,
+                        secret_access_key: document.getElementById('dstSecretAccessKey').value,
+                        endpoint_urls: document.getElementById('dstEndpointUrls').value.split(',').map(url => url.trim())
+                    };
+
+                    const log = {
+                        service: document.getElementById('logService').value,
+                        bucket: document.getElementById('logBucket').value,
+                        bucket_prefix: document.getElementById('logBucketPrefix').value,
+                        region: document.getElementById('logRegion').value,
+                        access_key: document.getElementById('logAccessKey').value,
+                        secret_access_key: document.getElementById('logSecretAccessKey').value,
+                        endpoint_urls: document.getElementById('logEndpointUrls').value.split(',').map(url => url.trim()),
+                        local_directory: document.getElementById('logLocalDirectory').value
+                    };
+
+                    const configData = { name: configName, src, dst, log };
+
+                    // Send a POST request to save the config
+                    fetch('/save_config', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(configData)
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            alert('Config saved successfully!');
+                            loadConfigList();  // Optionally reload the config list after saving
+                        } else {
+                            alert('Error saving config');
+                        }
+                    })
+                    .catch(error => console.error('Error saving config:', error));
+                });
+                
+                document.getElementById('download-button').addEventListener('click', function(event) {
+                    event.preventDefault();
+
+                    // Gather form data
+                    const src = {
+                        service: document.getElementById('srcService').value,
+                        bucket: document.getElementById('srcBucket').value,
+                        bucket_prefix: document.getElementById('srcBucketPrefix').value,
+                        region: document.getElementById('srcRegion').value,
+                        access_key: document.getElementById('srcAccessKey').value,
+                        secret_access_key: document.getElementById('srcSecretAccessKey').value,
+                        endpoint_urls: document.getElementById('srcEndpointUrls').value.split(',').map(url => url.trim())
+                    };
+
+                    const dst = {
+                        service: document.getElementById('dstService').value,
+                        bucket: document.getElementById('dstBucket').value,
+                        bucket_prefix: document.getElementById('dstBucketPrefix').value,
+                        region: document.getElementById('dstRegion').value,
+                        access_key: document.getElementById('dstAccessKey').value,
+                        secret_access_key: document.getElementById('dstSecretAccessKey').value,
+                        endpoint_urls: document.getElementById('dstEndpointUrls').value.split(',').map(url => url.trim())
+                    };
+
+                    const log = {
+                        service: document.getElementById('logService').value,
+                        bucket: document.getElementById('logBucket').value,
+                        bucket_prefix: document.getElementById('logBucketPrefix').value,
+                        region: document.getElementById('logRegion').value,
+                        access_key: document.getElementById('logAccessKey').value,
+                        secret_access_key: document.getElementById('logSecretAccessKey').value,
+                        endpoint_urls: document.getElementById('logEndpointUrls').value.split(',').map(url => url.trim()),
+                        local_directory: document.getElementById('logLocalDirectory').value
+                    };
+
+                    // Format as YAML string
+                    const yamlString = `# set up source information for snowball source
+src:
+    service: "${src.service}"
+    bucket: "${src.bucket}"
+    bucket_prefix: "${src.bucket_prefix}"
+    region: "${src.region}"
+    access_key: '${src.access_key}'
+    secret_access_key: '${src.secret_access_key}'
+    endpoint_urls: ${JSON.stringify(src.endpoint_urls, null, 2)}
+
+dst:
+    service: "${dst.service}"
+    bucket: "${dst.bucket}"
+    bucket_prefix: "${dst.bucket_prefix}"
+    region: "${dst.region}"
+    access_key: '${dst.access_key}'
+    secret_access_key: '${dst.secret_access_key}'
+    endpoint_urls: ${JSON.stringify(dst.endpoint_urls, null, 2)}
+
+log:
+    service: "${log.service}"
+    bucket: "${log.bucket}"
+    bucket_prefix: "${log.bucket_prefix}"
+    region: "${log.region}"
+    access_key: '${log.access_key}'
+    secret_access_key: '${log.secret_access_key}'
+    endpoint_urls: ${JSON.stringify(log.endpoint_urls, null, 2)}
+    local_directory: '${log.local_directory}'
+                    `;
+
+                    // Create a Blob with the YAML string
+                    const blob = new Blob([yamlString], { type: 'text/yaml' });
+                    const url = URL.createObjectURL(blob);
+
+                    // Create a link and trigger a download
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'config.yaml';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                });
+            </script>
+        </div>
+    </div>
+</div>
