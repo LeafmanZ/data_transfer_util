@@ -1,211 +1,255 @@
+from utils import read_config, create_client, create_s3_client, list_objects, is_endpoint_healthy
+import time
+import threading
+import json
+import yaml
+import io
+import os
+import subprocess
+import concurrent.futures
 
----
----
+###
+# BEGIN: LOAD IN CONFIGURATIONS
+###
+# Load configurations
+config = read_config()
 
-# S3 Data Transfer Scripts
+if not config:
+    print("Failed to read the configuration.")
+    exit(1)
+    
+log_service = config["log"]["service"]
+log_bucket = config["log"]["bucket"]
+log_prefix = config["log"]["bucket_prefix"]
+log_region = config["log"]["region"]
+log_access_key = config['log']['access_key']
+log_secret_access_key = config['log']['secret_access_key']
+log_endpoint_urls = config['log']['endpoint_urls']
+deployment_location = config['deployment_location']
 
-This document provides a detailed overview of two Python scripts designed for managing data transfers between AWS S3 buckets. The scripts facilitate data synchronization, particularly useful in environments involving AWS Snowball or similar services.
+retry_attempts = 5  # Number of attempts to retry
 
-## s3_transfer.py
+# Initialize the list for healthy endpoints
+tmp_endpoint_urls = []
 
-### Usage
+for log_endpoint_url in log_endpoint_urls:
+    print(f'Checking destination endpoint: {log_endpoint_url}')
+    log_client = create_s3_client(log_access_key, log_secret_access_key, log_region, log_endpoint_url)
+    
+    # Retry mechanism if the endpoint is not healthy
+    attempts = 0
+    while attempts < retry_attempts:
+        if is_endpoint_healthy(log_service, log_bucket, log_prefix, log_client, isSnow=(log_region == 'snow')):
+            tmp_endpoint_urls.append(log_endpoint_url)
+            break  # Exit the loop if the endpoint is healthy
+        attempts += 1
+        print(f'Retrying ({attempts}/{retry_attempts}) for endpoint: {log_endpoint_url}')
+    
+log_endpoint_urls = tmp_endpoint_urls
+###
+# END: LOAD IN CONFIGURATIONS
+###
 
-This script orchestrates the transfer of data between two S3 buckets. To use the script, configure the `config.yaml` file with the necessary details about the source and destination buckets, including access keys, region, and endpoint URLs. Then run the script using the following command:
+# Initialize S3 client and log objects
+log_s3_client = create_s3_client(log_access_key, log_secret_access_key, log_region, log_endpoint_urls[0])
 
-```
-python s3_transfer.py
-```
+def load_yaml_from_s3(s3_client, bucket, key):
+    response = s3_client.get_object(Bucket=bucket, Key=key)
+    content = response['Body'].read().decode('utf-8')
+    return yaml.safe_load(content)
 
-**Configuration Parameters:**
-- `bucket`: The name of the bucket.
-- `bucket_prefix`: Directory path within the bucket where data resides.
-- `region`: Set to 'snow' if using AWS Snowball.
-- `access_key` and `secret_access_key`: Credentials for S3 access.
-- `endpoint_urls`: List of endpoint URLs to manage high availability and load balancing.
+# Locks for thread safety
+e_lock = threading.Lock()
+v_lock = threading.Lock()
 
-### For Developers
+def validation_manager():
+    global log_service, log_bucket, log_prefix, log_region, log_access_key, log_secret_access_key, log_endpoint_urls
+    while True:
+        with v_lock:
+            try:
+                validation_results = {
+                    "src": False,
+                    "dst": False,
+                    "log": False
+                }
+                validation_keys = {
+                    "src": [],
+                    "dst": [],
+                    "log": []
+                }
 
-The `s3_transfer.py` script automates the process of comparing objects between the source and destination buckets, and performing the data transfer. It utilizes multi-threading to enhance the transfer efficiency, distributing tasks across available CPU cores. Key functions include:
+                api_logs = list_objects(log_service, log_bucket, "api", log_s3_client, isSnow=(log_region=='snow'))
 
-- **Configuration Loading**: Reads the settings from `config.yaml` and initializes the environment.
-- **JSON Logging**: Tracks the transfer status, including details about the data moved, the duration of the transfer, and any errors encountered.
-- **S3 Client Management**: Handles connections to AWS S3, accommodating different regions and special configurations like Snowball.
-- **Concurrency**: Uses `ThreadPoolExecutor` for parallel processing to optimize transfer times.
+                for key, value in list(api_logs.items()):
+                    if 'validate' in key and deployment_location in key and 'validated' not in key:
+                        # Procure and save the yaml data
+                        config = load_yaml_from_s3(log_s3_client, log_bucket, f'api/{key}')
+                        
 
-## s3_sync_obj.py
+                        # Delete that yaml file as soon as possible
+                        try:
+                            log_s3_client.delete_object(Bucket=log_bucket, Key=f'api/{key}')
+                            print(f"Deleted object api/{key} from: {log_bucket}")
+                        except Exception as e:
+                            print(f"Error deleting object from S3: {e}")
+                        
+                        src_service = config["src"]["service"]
+                        src_bucket = config["src"]["bucket"]
+                        src_prefix = config["src"]["bucket_prefix"]
+                        src_region = config["src"]["region"]
+                        src_access_key = config['src']['access_key']
+                        src_secret_access_key = config['src']['secret_access_key']
+                        src_endpoint_urls = config['src']['endpoint_urls']
 
-### Usage
+                        dst_service = config["dst"]["service"]
+                        dst_bucket = config["dst"]["bucket"]
+                        dst_prefix = config["dst"]["bucket_prefix"]
+                        dst_region = config["dst"]["region"]
+                        dst_access_key = config['dst']['access_key']
+                        dst_secret_access_key = config['dst']['secret_access_key']
+                        dst_endpoint_urls = config['dst']['endpoint_urls']
 
-This helper script is invoked by `s3_transfer.py` to handle the transfer of individual objects. It is not intended to be run independently. A typical invocation by the main script looks like this:
+                        log_service = config["log"]["service"]
+                        log_bucket = config["log"]["bucket"]
+                        log_prefix = config["log"]["bucket_prefix"]
+                        log_region = config["log"]["region"]
+                        log_access_key = config['log']['access_key']
+                        log_secret_access_key = config['log']['secret_access_key']
+                        log_endpoint_urls = config['log']['endpoint_urls']
 
-```
-python s3_sync_obj.py {src_bucket} {dst_bucket} {src_key} {dst_key} {bytes} {src_endpoint_url} {dst_endpoint_url} {dt_data_json_dir}
-```
+                        try:
+                            # Check source endpoints
+                            for src_endpoint_url in src_endpoint_urls:
+                                src_client = create_client(src_service, src_access_key, src_secret_access_key, src_region, src_endpoint_url)
+                                endpoint_health = is_endpoint_healthy(src_service, src_bucket, src_prefix, src_client, isSnow=(src_region=='snow'))
+                                if endpoint_health:
+                                    validation_results['src'] = True
+                                    if isinstance(endpoint_health, dict):
+                                        validation_keys['src'] = list(endpoint_health.keys())[:5]
+                                    break
+                        except :
+                            pass
+                        
+                        try:
+                            # Check destination endpoints
+                            for dst_endpoint_url in dst_endpoint_urls:
+                                dst_client = create_client(dst_service, dst_access_key, dst_secret_access_key, dst_region, dst_endpoint_url)
+                                endpoint_health = is_endpoint_healthy(dst_service, dst_bucket, dst_prefix, dst_client, isSnow=(dst_region=='snow'))
+                                if endpoint_health:
+                                    validation_results['dst'] = True
+                                    if isinstance(endpoint_health, dict):
+                                        validation_keys['dst'] = list(endpoint_health.keys())[:5]
+                                    break
+                        except:
+                            pass
+                    
+                        try:
+                            # Check log endpoints
+                            for log_endpoint_url in log_endpoint_urls:
+                                log_client = create_client(log_service, log_access_key, log_secret_access_key, log_region, log_endpoint_url)
+                                endpoint_health = is_endpoint_healthy(log_service, log_bucket, log_prefix, log_client, isSnow=(log_region=='snow'))
+                                if endpoint_health:
+                                    validation_results['log'] = True
+                                    if isinstance(endpoint_health, dict):
+                                        validation_keys['log'] = list(endpoint_health.keys())[:5]
+                                    break
+                        except:
+                            pass
+                        
+                        try:
+                            json_data = json.dumps({"validation_results": validation_results,
+                                                     "validation_keys": validation_keys})
+                            json_file_like = io.BytesIO(json_data.encode('utf-8'))
+                            # Define S3 bucket and object key
+                            new_key= key.replace('validate', 'validated').replace(".yaml",".json")
+                            # Upload the file-like object to S3
+                            log_s3_client.upload_fileobj(json_file_like, log_bucket, f'api/{new_key}')
+                            print(f'Validation has been uploaded to S3 as: s3://{log_bucket}/api/{new_key}')
+                        except Exception as e:
+                            print(f"Error uploading validation results to S3: {e}")
 
-### For Developers
+            except Exception as e:
+                print(f"Error Validating Config: {e}")
+        time.sleep(1)
 
-`s3_sync_obj.py` is designed for robust and efficient object transfer, including error handling and performance tracking. Key features include:
+def execution_manager():
+    global log_service, log_bucket, log_prefix, log_region, log_access_key, log_secret_access_key, log_endpoint_urls
+    while True:
+        with e_lock:
+            try:
+                api_logs = list_objects(log_service, log_bucket, "api", log_s3_client, isSnow=(log_region=='snow'))
+                for key, value in list(api_logs.items()):
+                    if 'run' in key and deployment_location in key:
+                        print(f'Initializing Transfer with Config!')  # Print the data to the console (for debugging purposes)
+                        # Procure and save the yaml data
+                        config = load_yaml_from_s3(log_s3_client, log_bucket, f'api/{key}')
 
-- **Argument Parsing**: Collects all necessary details for the transfer via command-line arguments.
-- **Secure S3 Client Setup**: Establishes secure connections to the S3 buckets, with special consideration for regions and custom endpoint URLs.
-- **Data Streaming and Uploading**: Optimizes data transfers by streaming objects directly between buckets to minimize local resource utilization.
-- **Performance Logging**: Records the transfer time and updates a JSON log with the completion details for each object moved.
+                        # Delete that run.yaml object as soon as possible
+                        try: 
+                            log_s3_client.delete_object(
+                                    Bucket=log_bucket,
+                                    Key=f'api/{key}'
+                              )
+                            print(f"Deleted object api/{key} from: {log_bucket}")
+                        except Exception as e:
+                            print(f"error deleting run config from S3: {e}")
 
----
----
+                        ### Save the config yaml ###
 
-# API Service and Testing
+                        try:
+                            filename = os.path.join("run_configs", key)
+                            directory = os.path.dirname(filename)
+                            if not os.path.exists(directory):
+                                os.makedirs(directory)
+                            with open(filename, 'w') as file:
+                                yaml.dump(config, file, default_flow_style=False)
+                            print(f'Config saved to: {filename}')
+                        except Exception as e:
+                            print(f"Error saving config YAML: {e}")
 
-This document provides detailed information on how to set up and interact with the API services, as well as how to run tests on the API endpoints using provided example scripts.
-
-## api_service.py
-
-### Usage
-
-To set up the API service on a Linux system, follow these steps:
-
-1. **Navigate to the current directory where `api_service.py` is located.**
-2. **Install OpenSSL if not already installed:**
-   ```
-   sudo apt-get install openssl
-   ```
-3. **Generate SSL certificates:**
-   ```
-   openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out cert.pem
-   ```
-   Follow the prompts to complete the form for the certificate.
-4. **Find the Python path:**
-   ```
-   type which python
-   ```
-   Use the output path to run the script as shown below.
-5. **Run the API service:**
-   ```
-   sudo /home/ubuntu/anaconda3/bin/python api_service.py
-   ```
-
-### Developer Documentation
-
-This script initializes a Flask application to serve an API that interacts with AWS S3 for logging purposes. Key components:
-
-- **Environment Setup:** The script requires SSL certificates (`key.pem` and `cert.pem`) for HTTPS.
-- **Configuration:** It reads configuration from a JSON file using `util_s3` helper functions and sets up an S3 client for log retrieval.
-- **Endpoints:**
-  - `GET /`: Lists all available routes and their descriptions.
-  - `GET /logs`: Lists log files within a specified time range.
-  - `GET /log/<epoch_time>`: Retrieves a specific log file by epoch time.
-  - `GET /log/latest`: Retrieves the most recent log file.
-
-## api_test_example.py
-
-### Usage
-
-This script is used to test the endpoints of the API deployed by `api_service.py`. It can be run in a Jupyter notebook or directly in its folder.
-
-1. **Ensure the API URL and port number are correctly configured:**
-   ```
-   API_URL = 'http://127.0.0.1:5000'
-   ```
-2. **Set the same authorization token as in `api_service.py`:**
-   ```
-   API_TOKEN = 'your_secure_token_here'
-   ```
-3. **Run the script:**
-   Execute the script to test various endpoints using predefined epoch times.
-
-### Developer Documentation
-
-The script uses the `requests` library to send HTTP requests to the API:
-
-- **Testing Functions:**
-  - `test_list_logs(start_time, end_time)`: Tests the listing of logs between two epoch times.
-  - `test_get_log(epoch_time, retrieve_objects_moved)`: Tests retrieval of a specific log by its epoch time.
-  - `test_get_latest_log(retrieve_objects_moved)`: Tests retrieval of the latest log.
-
-Each function prints the status code and JSON response for its respective API call, facilitating easy debugging and verification of API behavior.
-
----
----
-# Setting up Snowball Edge
-This will include steps to ensuring proper automated set up of your SBE. All scripts starting with sbe_ and ending with .py will be used for the set up. They are and will be used in this respective order:
-1. sbe_unlock.py
-2. sbe_profile.py
-3. sbe_config.py
-
-**Before you begin:**
-
-1. **Wait for the Snowball Edge (SBE) to procure its own IP address.**
-2. **Prepare the Directory**: Create a directory for the Snowball Edge and include the manifest file ending with (`manifest.bin`) and `sbe_config.yaml` with the following configuration:
-   ```yaml
-   unlock_key: "unlock-key-numbers-go-here"
-   endpoint_url: "https://you.rnu.mbe.rs"
-   ```
-
-## sbe_unlock.py
-
-### Usage
-
-This script automates the process of unlocking a Snowball Edge device, retrieving AWS access keys, and saving them to a YAML file located in the snowball directory as `keys.yaml`. This will be used in the later scripts in this process.
-
-**Run the Script**: Execute the script from the command line with the directory path of the Snowball Edge folder (snowdir) as an argument:
-   ```bash
-   python ./path/to/sbe_unlock.py <full/path/to/snowdir>
-   ```
-
-### Developer Documentation
-This script, `sbe_unlock.py`, is the first step of the automated process of unlocking and using your AWS Snowball Edge device.  
-Key features of this script include:
-- **Argument Parsing**: The script retrieves the path of the Snowball Edge directory from the command line argument.
-- **Unlocking the Device**: It enters the Snowball directory and accesses the endpoint URL and unlock code from the `sbe_config.yaml` file and `manifest.bin` file to unlock the Snowball Edge device.
-- **Check and Wait**: Program continuously checks and waits for unlock process to complete.
-- **Retrieve Access Keys**: Obtains AWS access and secret keys and writes to the Snowball directory as `keys.yaml`.
-
-
-## sbe_profile.py
-
-### Usage
-
-This script configures AWS CLI profiles using the credentials obtained from the Snowball Edge device. It reads the credentials from the `keys.yaml` file created by `sbe_unlock.py` and sets up the AWS CLI profile accordingly. The profile name used for this configuration will be the same as the Snowball directory.
-
-**Run the Script**: Execute the script from the command line with the directory path of the Snowball Edge folder (snowdir) as an argument:
-   ```bash
-   python ./path/to/sbe_profile.py <full/path/to/snowdir>
-   ```
-
-### Developer Documentation
-
-The `sbe_profile.py` script is the second step in the automated setup process of configuring AWS CLI profiles for your Snowball Edge device.  
-Key features of this script include:
-- **Argument Parsing**: Retrieves the path of the Snowball Edge directory from the command line argument and processes it to create the profile name.
-- **AWS Configuration**: Reads the `keys.yaml` file to obtain AWS access and secret keys. It then creates and sets up an AWS CLI profile using these credentials.
-- **Command Execution**: Executes necessary AWS CLI commands to configure the profile with the access keys, secret keys, region, and output format.
-
-## sbe_config.py
-
-### Usage
-
-This script configures the Snowball Edge device by providing it with the necessary details such as the manifest file path, unlock key, and endpoint URL. This will allow the user to configure the default Snowball profile to allow for usage of the SnowballEdge CLI.  
-
-**Run the Script**: Execute the script from the command line with the directory path of the Snowball Edge folder (snowdir) as an argument:
-   ```bash
-   python ./path/to/sbe_config.py <path/to/snowdir>
-   ```
-
-### Developer Documentation
-
-The `sbe_config.py` script is the final step in the automated setup process of configuring your Snowball Edge device.  
-Key features of this script include:
-
-- **Argument Parsing**: Retrieves the Snowball Edge directory path from the command line argument and processes it to determine the configuration.
-- **Device Configuration**: Iteratively configures each of the prompts given by the `snowballEdge configure` command using the provided manifest file, unlock key, and endpoint URL.
+                        ### Save the config yaml ###
 
 
-This configuration will ultimately allow the user to run commands such as:
-   ```bash
-   snowballEdge describe-device
-   ```
-Instead of:
-   ```bash
-   snowballEdge describe-device --endpoint https://123.456.78.900 --manifest-file "C:PATH/TO/manifest.bin" --unlock-code really-big-unlock-code-#
-   ```
----
+                        # # Run the cloud_transfer.py script as a detached process
+                        subprocess.Popen(
+                            ['/home/ec2-user/anaconda3/bin/python', 'cloud_transfer.py', f'{filename}'],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                            start_new_session=True
+                            )
+            except Exception as e:
+                print(f"Error Executing Run Config: {e}")
+        time.sleep(1)
+
+vm_thread = threading.Thread(target=validation_manager)
+vm_thread.daemon = True  # This ensures the thread will close when the main program exits
+vm_thread.start()
+
+em_thread = threading.Thread(target=execution_manager)
+em_thread.daemon = True  # This ensures the thread will close when the main program exits
+em_thread.start()
+
+# os.system('python logs_to_s3.py')
+# os.system('python logs_network_status.py')
+
+
+# List of scripts to run
+scripts = [
+    ['/home/ec2-user/anaconda3/bin/python', 'logs_to_s3.py'],
+    ['/home/ec2-user/anaconda3/bin/python', 'logs_network_status.py']
+]
+
+# Create a ThreadPoolExecutor
+with concurrent.futures.ThreadPoolExecutor() as executor:
+    # Use executor.submit to run the scripts concurrently
+    futures = [executor.submit(subprocess.run, script) for script in scripts]
+
+# Wait for all scripts to finish
+for future in futures:
+    future.result()  # This will raise an exception if the script fails
+
+try:
+    while True:
+        time.sleep(10)
+except KeyboardInterrupt:
+    print("Shutting down gracefully...")
