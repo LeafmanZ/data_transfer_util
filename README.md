@@ -69,13 +69,11 @@ def validation_manager():
             try:
                 validation_results = {
                     "src": False,
-                    "dst": False,
-                    "log": False
+                    "dst": False
                 }
                 validation_keys = {
                     "src": [],
-                    "dst": [],
-                    "log": []
+                    "dst": []
                 }
 
                 api_logs = list_objects(log_service, log_bucket, "api", log_s3_client, isSnow=(log_region=='snow'))
@@ -109,14 +107,6 @@ def validation_manager():
                         dst_secret_access_key = config['dst']['secret_access_key']
                         dst_endpoint_urls = config['dst']['endpoint_urls']
 
-                        log_service = config["log"]["service"]
-                        log_bucket = config["log"]["bucket"]
-                        log_prefix = config["log"]["bucket_prefix"]
-                        log_region = config["log"]["region"]
-                        log_access_key = config['log']['access_key']
-                        log_secret_access_key = config['log']['secret_access_key']
-                        log_endpoint_urls = config['log']['endpoint_urls']
-
                         try:
                             # Check source endpoints
                             for src_endpoint_url in src_endpoint_urls:
@@ -142,20 +132,7 @@ def validation_manager():
                                     break
                         except:
                             pass
-                    
-                        try:
-                            # Check log endpoints
-                            for log_endpoint_url in log_endpoint_urls:
-                                log_client = create_client(log_service, log_access_key, log_secret_access_key, log_region, log_endpoint_url)
-                                endpoint_health = is_endpoint_healthy(log_service, log_bucket, log_prefix, log_client, isSnow=(log_region=='snow'))
-                                if endpoint_health:
-                                    validation_results['log'] = True
-                                    if isinstance(endpoint_health, dict):
-                                        validation_keys['log'] = list(endpoint_health.keys())[:5]
-                                    break
-                        except:
-                            pass
-                        
+
                         try:
                             json_data = json.dumps({"validation_results": validation_results,
                                                      "validation_keys": validation_keys})
